@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import process from "node:process";
-import { CliApplication } from "./cli/cliApplication.js";
+import { CliApplication } from "./cli/cli-application.js";
 
 /**
  * Entry point.

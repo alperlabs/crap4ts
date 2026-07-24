@@ -1,5 +1,5 @@
 import type ts from "typescript";
-import { describeDeclaredMethod } from "./methodExtractors.js";
+import { describeDeclaredMethod } from "./method-extractors.js";
 
 /**
  * Whether a node begins its own declared method and therefore bounds traversal

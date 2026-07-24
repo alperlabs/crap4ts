@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import ts from "typescript";
-import { parseMethods } from "../../src/analysis/parsing/typeScriptMethodParser.js";
-import type { SmellCounts } from "../../src/analysis/smells/smellCounts.js";
-import { slopScore, emptyCounts, addCounts } from "../../src/analysis/smells/smellCounts.js";
+import { parseMethods } from "../../src/analysis/parsing/typescript-method-parser.js";
+import type { SmellCounts } from "../../src/analysis/smells/smell-counts.js";
+import { slopScore, emptyCounts, addCounts } from "../../src/analysis/smells/smell-counts.js";
 import { SMELL_DETECTORS } from "../../src/analysis/smells/registry.js";
-import { isGuardName } from "../../src/analysis/smells/detectors/guardSmell.js";
-import { callTargetName, callReceiverName } from "../../src/analysis/smells/detectors/callName.js";
+import { isGuardName } from "../../src/analysis/smells/detectors/guard-smell.js";
+import { callTargetName, callReceiverName } from "../../src/analysis/smells/detectors/call-name.js";
 
 function smellsOf(body: string, signature = "(x: any): any"): SmellCounts {
   const [method] = parseMethods("Sample.ts", `function target${signature} {\n${body}\n}`);
@@ -14,53 +14,89 @@ function smellsOf(body: string, signature = "(x: any): any"): SmellCounts {
 
 describe("smell detectors", () => {
   it("counts instanceof", () => {
-    expect(smellsOf("return x instanceof Error;", "(x: unknown): boolean").instanceOf).toBe(1);
+    // when
+    const actual = smellsOf("return x instanceof Error;", "(x: unknown): boolean");
+
+    // then
+    expect(actual.instanceOf).toBe(1);
   });
 
   it("counts typeof value checks", () => {
-    expect(smellsOf('return typeof x === "string";', "(x: unknown): boolean").typeOf).toBe(1);
+    // when
+    const actual = smellsOf('return typeof x === "string";', "(x: unknown): boolean");
+
+    // then
+    expect(actual.typeOf).toBe(1);
   });
 
   it("counts any annotations in signature and body", () => {
-    expect(smellsOf("const y: any = x;\nreturn y;").anyTypes).toBe(3); // x, return, y
+    // when
+    const actual = smellsOf("const y: any = x;\nreturn y;");
+
+    // then
+    expect(actual.anyTypes).toBe(3); // x, return, y
   });
 
   it("counts non-null assertions", () => {
-    expect(smellsOf("return x!.length;", "(x: string | null): number").nonNullAssertions).toBe(1);
+    // when
+    const actual = smellsOf("return x!.length;", "(x: string | null): number");
+
+    // then
+    expect(actual.nonNullAssertions).toBe(1);
   });
 
-  it("counts as-casts but not as-const or typeof-only code", () => {
-    const s = smellsOf(
+  it("counts as-casts but not as-const", () => {
+    // when
+    const actual = smellsOf(
       'const a = x as string;\nconst b = "hi" as const;\nreturn a + b;',
       "(x: unknown): string",
     );
-    expect(s.asCasts).toBe(1);
+
+    // then
+    expect(actual.asCasts).toBe(1);
   });
 
   it("counts angle-bracket type assertions", () => {
     // `<T>x` assertions are only valid in .ts (non-JSX) files.
-    const [method] = parseMethods(
-      "cast.ts",
-      "function target(x: unknown): string {\n  return <string>x;\n}",
-    );
-    expect(method.smells.asCasts).toBe(1);
+    const source = "function target(x: unknown): string {\n  return <string>x;\n}";
+
+    // when
+    const [actual] = parseMethods("cast.ts", source);
+
+    // then
+    expect(actual.smells.asCasts).toBe(1);
   });
 
   it("counts optional chains on properties, elements, and calls", () => {
-    expect(smellsOf("return x?.a?.[0]?.();", "(x: any): any").optionalChains).toBe(3);
+    // when
+    const actual = smellsOf("return x?.a?.[0]?.();", "(x: any): any");
+
+    // then
+    expect(actual.optionalChains).toBe(3);
   });
 
   it("counts nullish coalescing", () => {
-    expect(smellsOf("return x ?? 0;", "(x: number | null): number").nullishCoalescing).toBe(1);
+    // when
+    const actual = smellsOf("return x ?? 0;", "(x: number | null): number");
+
+    // then
+    expect(actual.nullishCoalescing).toBe(1);
   });
 
   it("counts try/catch", () => {
-    expect(smellsOf("try { return 1; } catch (e) { return 0; }", "(): number").tryCatch).toBe(1);
+    // when
+    const actual = smellsOf("try { return 1; } catch (e) { return 0; }", "(): number");
+
+    // then
+    expect(actual.tryCatch).toBe(1);
   });
 
   it("counts console calls only", () => {
-    const s = smellsOf("console.log(x);\nlogger.info(x);\nreturn x;", "(x: number): number");
-    expect(s.consoleCalls).toBe(1);
+    // when
+    const actual = smellsOf("console.log(x);\nlogger.info(x);\nreturn x;", "(x: number): number");
+
+    // then
+    expect(actual.consoleCalls).toBe(1);
   });
 
   it("counts type predicates and guard-style calls as guards", () => {
@@ -72,9 +108,13 @@ describe("smell detectors", () => {
       "  return isThing(x) ? 1 : 0;",
       "}",
     ].join("\n");
-    const methods = parseMethods("Sample.ts", source);
-    expect(methods.find((m) => m.name === "isThing")!.smells.isGuards).toBe(1);
-    expect(methods.find((m) => m.name === "use")!.smells.isGuards).toBe(1);
+
+    // when
+    const actual = parseMethods("Sample.ts", source);
+
+    // then
+    expect(actual.find((m) => m.name === "isThing")!.smells.isGuards).toBe(1);
+    expect(actual.find((m) => m.name === "use")!.smells.isGuards).toBe(1);
   });
 
   it("does not leak nested method smells to the parent", () => {
@@ -84,25 +124,33 @@ describe("smell detectors", () => {
       "  return helper(x) ? 1 : 0;",
       "}",
     ].join("\n");
-    const methods = parseMethods("Sample.ts", source);
-    expect(methods.find((m) => m.name === "parent")!.smells.instanceOf).toBe(0);
-    expect(methods.find((m) => m.name === "helper")!.smells.instanceOf).toBe(1);
+
+    // when
+    const actual = parseMethods("Sample.ts", source);
+
+    // then
+    expect(actual.find((m) => m.name === "parent")!.smells.instanceOf).toBe(0);
+    expect(actual.find((m) => m.name === "helper")!.smells.instanceOf).toBe(1);
   });
 
   it("reports zero smells for clean code", () => {
-    const s = smellsOf("return x + 1;", "(x: number): number");
-    expect(Object.values(s).every((count) => count === 0)).toBe(true);
+    // when
+    const actual = smellsOf("return x + 1;", "(x: number): number");
+
+    // then
+    expect(Object.values(actual).every((count) => count === 0)).toBe(true);
   });
 });
 
 describe("guard names", () => {
   it("matches is/has/can/should prefixes", () => {
-    expect(isGuardName("isReady")).toBe(true);
-    expect(isGuardName("hasValue")).toBe(true);
-    expect(isGuardName("canRun")).toBe(true);
-    expect(isGuardName("shouldStop")).toBe(true);
-    expect(isGuardName("island")).toBe(false);
-    expect(isGuardName("compute")).toBe(false);
+    // when
+    const matches = ["isReady", "hasValue", "canRun", "shouldStop"].map(isGuardName);
+    const nonMatches = ["island", "compute"].map(isGuardName);
+
+    // then
+    expect(matches).toEqual([true, true, true, true]);
+    expect(nonMatches).toEqual([false, false]);
   });
 });
 
@@ -121,15 +169,27 @@ describe("call name helpers", () => {
   }
 
   it("reads identifier and property callees, undefined otherwise", () => {
-    expect(callTargetName(firstCall("foo();"))).toBe("foo");
-    expect(callTargetName(firstCall("obj.bar();"))).toBe("bar");
-    expect(callTargetName(firstCall("arr[0]();"))).toBeUndefined();
+    // when
+    const identifier = callTargetName(firstCall("foo();"));
+    const property = callTargetName(firstCall("obj.bar();"));
+    const element = callTargetName(firstCall("arr[0]();"));
+
+    // then
+    expect(identifier).toBe("foo");
+    expect(property).toBe("bar");
+    expect(element).toBeUndefined();
   });
 
   it("reads the receiver identifier only", () => {
-    expect(callReceiverName(firstCall("console.log();"))).toBe("console");
-    expect(callReceiverName(firstCall("foo();"))).toBeUndefined();
-    expect(callReceiverName(firstCall("a.b.c();"))).toBeUndefined();
+    // when
+    const receiver = callReceiverName(firstCall("console.log();"));
+    const bareCall = callReceiverName(firstCall("foo();"));
+    const nestedReceiver = callReceiverName(firstCall("a.b.c();"));
+
+    // then
+    expect(receiver).toBe("console");
+    expect(bareCall).toBeUndefined();
+    expect(nestedReceiver).toBeUndefined();
   });
 });
 
@@ -138,8 +198,12 @@ describe("smell aggregation", () => {
     const counts = emptyCounts(SMELL_DETECTORS);
     counts.isGuards = 1;
     counts.anyTypes = 2;
-    // guard weight 2 + any weight 3 * 2 = 8
-    expect(slopScore(counts, SMELL_DETECTORS)).toBe(8);
+
+    // when
+    const actual = slopScore(counts, SMELL_DETECTORS);
+
+    // then
+    expect(actual).toBe(8); // guard weight 2 + any weight 3 * 2
   });
 
   it("adds count objects in place", () => {
@@ -147,6 +211,11 @@ describe("smell aggregation", () => {
     a.tryCatch = 1;
     const b = emptyCounts(SMELL_DETECTORS);
     b.tryCatch = 2;
-    expect(addCounts(a, b).tryCatch).toBe(3);
+
+    // when
+    const actual = addCounts(a, b);
+
+    // then
+    expect(actual.tryCatch).toBe(3);
   });
 });

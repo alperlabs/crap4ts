@@ -1,20 +1,20 @@
-import type { SmellDetector } from "./smellDetector.js";
-import { guardSmell } from "./detectors/guardSmell.js";
-import { instanceofSmell } from "./detectors/instanceofSmell.js";
-import { typeofSmell } from "./detectors/typeofSmell.js";
-import { anyTypeSmell } from "./detectors/anyTypeSmell.js";
-import { nonNullSmell } from "./detectors/nonNullSmell.js";
-import { asCastSmell } from "./detectors/asCastSmell.js";
-import { optionalChainSmell } from "./detectors/optionalChainSmell.js";
-import { nullishCoalescingSmell } from "./detectors/nullishCoalescingSmell.js";
-import { tryCatchSmell } from "./detectors/tryCatchSmell.js";
-import { consoleSmell } from "./detectors/consoleSmell.js";
+import type { SmellDetector } from "./smell-detector.js";
+import { guardSmell } from "./detectors/guard-smell.js";
+import { instanceofSmell } from "./detectors/instanceof-smell.js";
+import { typeofSmell } from "./detectors/typeof-smell.js";
+import { anyTypeSmell } from "./detectors/any-type-smell.js";
+import { nonNullSmell } from "./detectors/non-null-smell.js";
+import { asCastSmell } from "./detectors/as-cast-smell.js";
+import { optionalChainSmell } from "./detectors/optional-chain-smell.js";
+import { nullishCoalescingSmell } from "./detectors/nullish-coalescing-smell.js";
+import { tryCatchSmell } from "./detectors/try-catch-smell.js";
+import { consoleSmell } from "./detectors/console-smell.js";
 
 /**
  * The active set of AI-slop heuristics, in report order.
  *
  * To add a new smell, implement a {@link SmellDetector} in
- * `detectors/<name>Smell.ts` and add it to this list. Nothing else needs to
+ * `detectors/<name>-smell.ts` and add it to this list. Nothing else needs to
  * change: counting, scoring, and the report all iterate this registry.
  */
 export const SMELL_DETECTORS: readonly SmellDetector[] = [

@@ -68,6 +68,7 @@ export const myThingSmell: SmellDetector = {
   key: "myThing", // stable id, also the column key in SmellCounts
   label: "mine", // short header shown in the report breakdown
   weight: 1, // multiplier into the slop score
+  advice: "How to fix it, in one sentence.", // shown alongside findings
   matches(node) {
     return false; // a predicate on a single AST node
   },

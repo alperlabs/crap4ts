@@ -6,6 +6,7 @@ export const instanceofSmell: SmellDetector = {
   key: "instanceOf",
   label: "instof",
   weight: 1,
+  advice: "Prefer polymorphism or discriminated unions over instanceof checks.",
   matches(node) {
     return isInstanceOf(node);
   },

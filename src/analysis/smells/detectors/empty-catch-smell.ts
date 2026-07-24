@@ -6,6 +6,7 @@ export const emptyCatchSmell: SmellDetector = {
   key: "emptyCatches",
   label: "mute-catch",
   weight: 3,
+  advice: "Never swallow errors: handle, log, or rethrow.",
   matches(node) {
     return ts.isCatchClause(node) && node.block.statements.length === 0;
   },

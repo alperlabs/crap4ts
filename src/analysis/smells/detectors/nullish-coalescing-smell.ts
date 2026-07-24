@@ -6,6 +6,7 @@ export const nullishCoalescingSmell: SmellDetector = {
   key: "nullishCoalescing",
   label: "??",
   weight: 1,
+  advice: "Push defaults to the edge where the value is created.",
   matches(node) {
     return isNullish(node);
   },

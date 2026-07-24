@@ -15,6 +15,7 @@ export const suppressionSmell: SmellDetector = {
   key: "suppressions",
   label: "suppress",
   weight: 4,
+  advice: "Fix the underlying diagnostic instead of silencing the tool.",
   matches(node) {
     return ownsLeadingComments(node) && leadingComments(node).some(isSuppressionComment);
   },

@@ -6,6 +6,7 @@ export const asCastSmell: SmellDetector = {
   key: "asCasts",
   label: "as",
   weight: 1,
+  advice: "Let inference or a type guard prove the type instead of asserting it.",
   matches(node) {
     return isMeaningfulCast(node);
   },

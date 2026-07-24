@@ -152,6 +152,19 @@ and a max self-CRAP well under the threshold, both enforced in CI. See
 [CONTRIBUTING.md](CONTRIBUTING.md) to add a smell detector, complexity rule, or
 declaration shape.
 
+## Roadmap
+
+- **Per-finding output**: report each smell occurrence as `file:line` together
+  with the detector's one-line fix advice. The data layer already exists —
+  `findSmells` returns located findings, and every detector carries `advice` —
+  what remains is the report/CLI surface.
+- Configurable thresholds and weights.
+- Machine-readable (JSON) report output.
+
+Have an idea for a new heuristic? Open a
+[smell proposal](.github/ISSUE_TEMPLATE/smell-proposal.md) — a detector is a
+one-file contribution.
+
 ## Notes
 
 - If the coverage JSON is missing, coverage is reported as `N/A` (and CRAP `N/A`).

@@ -19,6 +19,8 @@ export interface SmellDetector {
   readonly label: string;
   /** Multiplier applied to this smell's count when computing the slop score. */
   readonly weight: number;
+  /** One-line fix suggestion, shown alongside findings for this smell. */
+  readonly advice: string;
   /** Whether this node exhibits the smell. Each matching node counts once. */
   matches(node: ts.Node): boolean;
 }

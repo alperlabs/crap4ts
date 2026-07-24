@@ -12,6 +12,7 @@ export const guardSmell: SmellDetector = {
   key: "isGuards",
   label: "guard",
   weight: 2,
+  advice: "Narrow once at the boundary with types instead of runtime guard ladders.",
   matches(node) {
     return ts.isTypePredicateNode(node) || isGuardCall(node);
   },

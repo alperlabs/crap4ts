@@ -6,6 +6,7 @@ export const nonNullSmell: SmellDetector = {
   key: "nonNullAssertions",
   label: "nonNull",
   weight: 2,
+  advice: "Handle the null case, or restructure so the value is provably present.",
   matches(node) {
     return ts.isNonNullExpression(node);
   },

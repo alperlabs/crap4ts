@@ -6,6 +6,7 @@ export const optionalChainSmell: SmellDetector = {
   key: "optionalChains",
   label: "?.",
   weight: 1,
+  advice: "Make the value non-optional upstream instead of chaining around null.",
   matches(node) {
     return hasOptionalChainToken(node);
   },

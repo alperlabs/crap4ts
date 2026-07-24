@@ -4,6 +4,7 @@ import { parseMethods } from "../../src/analysis/parsing/typescript-method-parse
 import type { SmellCounts } from "../../src/analysis/smells/smell-counts.js";
 import { slopScore, emptyCounts, addCounts } from "../../src/analysis/smells/smell-counts.js";
 import { SMELL_DETECTORS } from "../../src/analysis/smells/registry.js";
+import { findSmells } from "../../src/analysis/smells/smell-counter.js";
 import { isGuardName } from "../../src/analysis/smells/detectors/guard-smell.js";
 import { callTargetName, callReceiverName } from "../../src/analysis/smells/detectors/call-name.js";
 
@@ -214,6 +215,42 @@ describe("smell detectors", () => {
 
     // then
     expect(Object.values(actual).every((count) => count === 0)).toBe(true);
+  });
+});
+
+describe("smell findings", () => {
+  it("locates each occurrence by file and 1-based line", () => {
+    const source = [
+      "function target(x: unknown): boolean {",
+      "  const y = x as string;",
+      "  return x instanceof Error;",
+      "}",
+    ].join("\n");
+    const sourceFile = ts.createSourceFile("sample.ts", source, ts.ScriptTarget.Latest, true);
+
+    // when
+    const findings = findSmells(sourceFile.statements[0]);
+
+    // then
+    const located = findings.map((f) => ({ key: f.detector.key, file: f.file, line: f.line }));
+    expect(located).toEqual([
+      { key: "asCasts", file: "sample.ts", line: 2 },
+      { key: "instanceOf", file: "sample.ts", line: 3 },
+    ]);
+  });
+});
+
+describe("detector registry hygiene", () => {
+  it("gives every detector a unique key and complete metadata", () => {
+    const keys = SMELL_DETECTORS.map((detector) => detector.key);
+
+    // then
+    expect(new Set(keys).size).toBe(SMELL_DETECTORS.length);
+    for (const detector of SMELL_DETECTORS) {
+      expect(detector.label.length).toBeGreaterThan(0);
+      expect(detector.advice.length).toBeGreaterThan(0);
+      expect(detector.weight).toBeGreaterThanOrEqual(1);
+    }
   });
 });
 

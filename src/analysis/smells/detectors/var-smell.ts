@@ -6,6 +6,7 @@ export const varSmell: SmellDetector = {
   key: "varDeclarations",
   label: "var",
   weight: 2,
+  advice: "Use const (or let) for block-scoped declarations.",
   matches(node) {
     return ts.isVariableDeclarationList(node) && (node.flags & ts.NodeFlags.BlockScoped) === 0;
   },

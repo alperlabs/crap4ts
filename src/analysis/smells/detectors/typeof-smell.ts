@@ -6,6 +6,7 @@ export const typeofSmell: SmellDetector = {
   key: "typeOf",
   label: "typeof",
   weight: 1,
+  advice: "Model the type up front instead of re-checking it at runtime.",
   matches(node) {
     return ts.isTypeOfExpression(node);
   },

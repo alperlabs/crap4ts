@@ -6,6 +6,7 @@ export const anyTypeSmell: SmellDetector = {
   key: "anyTypes",
   label: "any",
   weight: 3,
+  advice: "Replace any with unknown, a generic, or the real type.",
   matches(node) {
     return node.kind === ts.SyntaxKind.AnyKeyword;
   },

@@ -6,6 +6,7 @@ export const tryCatchSmell: SmellDetector = {
   key: "tryCatch",
   label: "try",
   weight: 1,
+  advice: "Catch only where you can genuinely handle; let other errors propagate.",
   matches(node) {
     return ts.isTryStatement(node);
   },

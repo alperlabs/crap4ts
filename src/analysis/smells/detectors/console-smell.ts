@@ -7,6 +7,7 @@ export const consoleSmell: SmellDetector = {
   key: "consoleCalls",
   label: "console",
   weight: 2,
+  advice: "Route output through a logger, or delete the debug statement.",
   matches(node) {
     return ts.isCallExpression(node) && callReceiverName(node) === "console";
   },

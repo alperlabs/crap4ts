@@ -14,6 +14,7 @@ export const looseEqualitySmell: SmellDetector = {
   key: "looseEquality",
   label: "loose-eq",
   weight: 2,
+  advice: "Use === and !== for predictable comparisons.",
   matches(node) {
     return isLooseComparison(node);
   },

@@ -3,8 +3,12 @@ import type { SmellFinding } from "./smells/smell-finding.js";
 
 /** A single report row: method identity, complexity, coverage, CRAP, and slop. */
 export interface MethodMetrics {
+  /** Absolute or label path of the source file. */
+  file: string;
   methodName: string;
   className: string;
+  /** 1-based start line of the method declaration. */
+  startLine: number;
   complexity: number;
   /** Coverage percentage in 0..100, or null when unknown. */
   coveragePercent: number | null;

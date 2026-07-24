@@ -13,6 +13,9 @@ import { consoleSmell } from "./detectors/console-smell.js";
 import { suppressionSmell } from "./detectors/suppression-smell.js";
 import { looseEqualitySmell } from "./detectors/loose-equality-smell.js";
 import { varSmell } from "./detectors/var-smell.js";
+import { objectNullGuardSmell } from "./detectors/object-null-guard-smell.js";
+import { typeGuardHelperSmell } from "./detectors/type-guard-helper-smell.js";
+import { duplicateTypeGuardSmell } from "./detectors/duplicate-type-guard-smell.js";
 
 /**
  * The active set of AI-slop heuristics, in report order.
@@ -36,4 +39,7 @@ export const SMELL_DETECTORS: readonly SmellDetector[] = [
   suppressionSmell,
   looseEqualitySmell,
   varSmell,
+  objectNullGuardSmell,
+  typeGuardHelperSmell,
+  duplicateTypeGuardSmell,
 ];

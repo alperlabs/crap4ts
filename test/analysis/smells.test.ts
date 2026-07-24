@@ -277,6 +277,86 @@ describe("smell detectors", () => {
     // then
     expect(Object.values(actual).every((count) => count === 0)).toBe(true);
   });
+
+  it("counts typeof-object && !== null guards in either operand order", () => {
+    // when
+    const forward = smellsOf(
+      'return typeof x === "object" && x !== null ? 1 : 0;',
+      "(x: unknown): number",
+    );
+    const reversed = smellsOf(
+      'return "object" === typeof x && null != x ? 1 : 0;',
+      "(x: unknown): number",
+    );
+
+    // then
+    expect(forward.objectNullGuards).toBe(1);
+    expect(reversed.objectNullGuards).toBe(1);
+  });
+
+  it("does not count near-miss object/null checks", () => {
+    const body = [
+      "const a = typeof x === 'object' && x;",
+      "const b = typeof x === 'object' && x === null;",
+      'const c = "object" === typeof x.y && x !== null;',
+      "return 0;",
+    ].join("\n");
+
+    // when
+    const actual = smellsOf(body, "(x: any): number");
+
+    // then
+    expect(actual.objectNullGuards).toBe(0);
+  });
+
+  it("counts bare isRecord/isPlainObject helper calls but not namespaced ones", () => {
+    // when
+    const bare = smellsOf(
+      "return isRecord(x) && isPlainObject(x) ? 1 : 0;",
+      "(x: unknown): number",
+    );
+    const namespaced = smellsOf(
+      "return types.isObject(x) || Array.isArray(x) ? 1 : 0;",
+      "(x: unknown, types: { isObject(v: unknown): boolean }): number",
+    );
+
+    // then
+    expect(bare.typeGuardHelpers).toBe(2);
+    expect(namespaced.typeGuardHelpers).toBe(0);
+  });
+
+  it("counts isRecord-family helper definitions in functions, consts, methods, and properties", () => {
+    const source = [
+      "function isRecord(value: unknown): value is Record<string, unknown> {",
+      '  return typeof value === "object" && value !== null;',
+      "}",
+      "const isString = (value: unknown): value is string => typeof value === 'string';",
+      "const isArray = function (value: unknown): boolean { return Array.isArray(value); };",
+      "function ignoreNonHelper(): number {",
+      "  const isRecord = 1;",
+      "  return isRecord;",
+      "}",
+      "class Box {",
+      "  isBoolean(value: unknown): value is boolean { return typeof value === 'boolean'; }",
+      "  isNumber = (value: unknown): value is number => typeof value === 'number';",
+      "}",
+      "const helpers = { isObject: (value: unknown) => value !== null };",
+    ].join("\n");
+
+    // when
+    const actual = parseMethods("guards.ts", source);
+    const helperCount = (name: string) =>
+      actual.find((method) => method.name === name)?.smells.typeGuardHelpers;
+
+    // then
+    expect(helperCount("isRecord")).toBe(1);
+    expect(helperCount("isString")).toBe(1);
+    expect(helperCount("isArray")).toBe(1);
+    expect(helperCount("isBoolean")).toBe(1);
+    expect(helperCount("isNumber")).toBe(1);
+    expect(helperCount("isObject")).toBe(1);
+    expect(helperCount("ignoreNonHelper")).toBe(0);
+  });
 });
 
 describe("smell findings", () => {

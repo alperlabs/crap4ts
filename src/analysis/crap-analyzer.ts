@@ -4,6 +4,7 @@ import { parseCoverage, normalizePath } from "../coverage/coverage-parser.js";
 import { FileCoverage } from "../coverage/coverage-data.js";
 import { calculateCrap } from "./crap-score.js";
 import { parseMethods } from "./parsing/typescript-method-parser.js";
+import { annotateDuplicateTypeGuards } from "./smells/annotate-duplicate-type-guards.js";
 import { SMELL_DETECTORS } from "./smells/registry.js";
 import { slopScore } from "./smells/smell-counts.js";
 import type { MethodDescriptor } from "./method-descriptor.js";
@@ -16,7 +17,8 @@ import type { MethodMetrics } from "./method-metrics.js";
  */
 export function analyze(files: string[], coverageJsonPath: string | null): MethodMetrics[] {
   const coverage = parseCoverage(coverageJsonPath);
-  return files.flatMap((file) => analyzeFile(file, coverage));
+  const metrics = files.flatMap((file) => analyzeFile(file, coverage));
+  return annotateDuplicateTypeGuards(metrics);
 }
 
 function analyzeFile(file: string, coverage: Map<string, FileCoverage>): MethodMetrics[] {
@@ -35,8 +37,10 @@ function toMetrics(
 ): MethodMetrics {
   const coveragePercent = coverageFor(method, fileCoverage);
   return {
+    file: method.file,
     methodName: method.name,
     className: method.className,
+    startLine: method.startLine,
     complexity: method.complexity,
     coveragePercent,
     crapScore: calculateCrap(method.complexity, coveragePercent),

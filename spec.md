@@ -146,10 +146,13 @@ result is an integer `CC >= 1`.
 For each declared method the tool shall count the smells defined in the README
 table (guard ladders, `instanceof`, `typeof`, `any`, non-null assertions, `as` casts,
 optional chaining, nullish coalescing, try/catch, empty catch blocks,
-`console.*`, suppression comments, loose equality, `var` declarations) over the
-declaration node, without descending into nested declared methods. Each method's
-weighted slop score is the sum of its counts times their weights. Slop scores do
-not affect exit codes.
+`console.*`, suppression comments, loose equality, `var` declarations,
+`typeof x === "object" && x !== null` bodies, `isRecord`-family helper
+definitions and bare calls) over the declaration node, without descending into
+nested declared methods. After per-file analysis, when the same type-guard
+helper name is defined in two or more files, each defining method receives one
+additional `dup-guard` finding. Each method's weighted slop score is the sum of
+its counts times their weights. Slop scores do not affect exit codes.
 
 The set of heuristics is a registry of independent detectors; an implementation
 may add or remove heuristics without changing the counting, scoring, or report

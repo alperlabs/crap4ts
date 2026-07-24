@@ -27,6 +27,106 @@ the selected files.
 > The lowest possible CRAP score is **1.0** — a method with complexity 1 at 100%
 > coverage scores `1² · 0³ + 1 = 1`. There is no such thing as CRAP 0.
 
+## Reading CRAP scores
+
+CRAP means **Change Risk Anti-Patterns**: how risky it is to change a method,
+not how ugly it looks. High CRAP usually means “complex **and** under-tested.”
+A clean method with no tests can outrank a messy one that is fully covered.
+
+### Example: clean use case, CRAP 20
+
+This NestJS-style use case is short, linear, and follows clean architecture —
+yet it scored **CRAP 20** on a real project run:
+
+```ts
+async execute(command: AdminUpdateOrganizationCommand): Promise<Organization> {
+  const organization = await this.organizationRepository.findById(
+    command.organizationId,
+  );
+  if (!organization) {
+    throw new OrganizationNotFoundException(command.organizationId);
+  }
+
+  if (command.categorySlug) {
+    const exists = await this.categoryRepository.existsBySlug(
+      command.categorySlug,
+    );
+    if (!exists) {
+      throw new OrganizationCategoryNotFoundException(command.categorySlug);
+    }
+  }
+
+  const updated = organization.updateProfile({ /* fields from command */ });
+  await this.organizationRepository.save(updated);
+  return updated;
+}
+```
+
+| Input    |  Value | Why                                              |
+| -------- | -----: | ------------------------------------------------ |
+| CC       |      4 | base + three `if`s (not-found, optional slug, …) |
+| Coverage |     0% | no use-case spec; callers mock this class        |
+| **CRAP** | **20** | `4² · (1 − 0)³ + 4 = 20`                         |
+
+At **100%** coverage the same method would score **CRAP 4.0** — well under the
+default gate of 8. The fix is a focused unit test for `execute`, not a rewrite.
+
+### Example: dense domain update, CRAP 90
+
+Same project, same 0% coverage — but here the method itself is hard to change.
+Optional fields are merged through nested ternaries and `||` fallbacks:
+
+```ts
+updateDetails(params: {
+  displayName?: string;
+  phone?: string | null;
+  locale?: string;
+  timezone?: string;
+  avatarUrl?: string | null;
+}): UserProfile {
+  const displayName =
+    params.displayName !== undefined
+      ? params.displayName.trim() || this.displayNameValue
+      : this.displayNameValue;
+  return new UserProfile(
+    this.id,
+    this.accountIdValue,
+    displayName,
+    params.avatarUrl === undefined
+      ? this.avatarUrlValue
+      : params.avatarUrl?.trim() || undefined,
+    params.phone === undefined
+      ? this.phoneValue
+      : params.phone?.trim() || undefined,
+    params.locale?.trim() || this.localeValue,
+    params.timezone?.trim() || this.timezoneValue,
+  );
+}
+```
+
+| Input    |  Value | Why                                   |
+| -------- | -----: | ------------------------------------- |
+| CC       |      9 | ternaries + `                         |     | ` short-circuits on every optional field |
+| Coverage |     0% | no direct unit coverage for this path |
+| **CRAP** | **90** | `9² · (1 − 0)³ + 9 = 90`              |
+
+Even at **100%** coverage this would still score **CRAP 9.0** (above the gate)
+until the branching is simplified — e.g. small per-field helpers or an explicit
+patch/merge step. Tests alone are not enough; the structure has to get simpler.
+
+### How to read the two rows
+
+| Signal           | Clean use case (CRAP 20) | Dense update (CRAP 90)   |
+| ---------------- | ------------------------ | ------------------------ |
+| Structure        | fine                     | tangled optional merging |
+| Coverage         | 0%                       | 0%                       |
+| Fix              | add a use-case spec      | simplify **and** test    |
+| At 100% coverage | CRAP 4 (passes)          | CRAP 9 (still fails)     |
+
+Use **CRAP** for change risk, and the **slop** breakdown when you care about
+AI-shaped syntax. A high-CRAP / low-complexity row is usually testing debt;
+high-CRAP / high-complexity is where design review belongs.
+
 ## AI-slop metrics
 
 Each method is also scanned for the following smells. They are counted per
@@ -49,15 +149,18 @@ handling outright:
 **Style heuristics** — soft signals; each is idiomatic on its own and only
 suspicious in aggregate:
 
-| Smell     | What it counts                                                             | Weight |
-| --------- | -------------------------------------------------------------------------- | ------ |
-| `guard`   | consecutive `if (...) return/throw` guard clauses (ladders of N score N−1) | 2      |
-| `console` | `console.*` calls                                                          | 2      |
-| `instof`  | `x instanceof Foo` expressions                                             | 1      |
-| `typeof`  | `typeof x` value-position checks                                           | 1      |
-| `?.`      | optional-chaining hops                                                     | 1      |
-| `??`      | nullish-coalescing operators                                               | 1      |
-| `try`     | try/catch statements                                                       | 1      |
+| Smell       | What it counts                                                               | Weight |
+| ----------- | ---------------------------------------------------------------------------- | ------ |
+| `guard`     | consecutive `if (...) return/throw` guard clauses (ladders of N score N−1)   | 2      |
+| `console`   | `console.*` calls                                                            | 2      |
+| `instof`    | `x instanceof Foo` expressions                                               | 1      |
+| `typeof`    | `typeof x` value-position checks                                             | 1      |
+| `?.`        | optional-chaining hops                                                       | 1      |
+| `??`        | nullish-coalescing operators                                                 | 1      |
+| `try`       | try/catch statements                                                         | 1      |
+| `obj-null`  | `typeof x === "object" && x !== null` JSON-guard bodies                      | 1      |
+| `is-helper` | `isRecord` / `isPlainObject` / `isObject` / `isString` / … defs & bare calls | 1      |
+| `dup-guard` | same type-guard helper name defined in two or more files                     | 1      |
 
 None of these are bugs on their own; in aggregate they are a good smell for
 unreviewed, machine-generated code. The slop score does **not** affect the exit

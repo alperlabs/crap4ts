@@ -7,8 +7,10 @@ import type { MethodMetrics } from "../../src/analysis/method-metrics.js";
 
 function metric(crapScore: number | null, methodName = "m"): MethodMetrics {
   return {
+    file: "src/sample.ts",
     methodName,
     className: "C",
+    startLine: 1,
     complexity: 1,
     coveragePercent: crapScore,
     crapScore,
@@ -117,5 +119,48 @@ describe("analyze", () => {
     expect(actual).toHaveLength(1);
     expect(actual[0].coveragePercent).toBeNull();
     expect(actual[0].crapScore).toBeNull();
+  });
+
+  it("flags isRecord helpers duplicated across files", () => {
+    const helper = [
+      "export function isRecord(value: unknown): value is Record<string, unknown> {",
+      '  return typeof value === "object" && value !== null;',
+      "}",
+    ].join("\n");
+    const a = path.join(dir, "a.ts");
+    const b = path.join(dir, "b.ts");
+    const other = path.join(dir, "other.ts");
+    writeFileSync(a, helper);
+    writeFileSync(b, helper);
+    writeFileSync(other, "export function noop(): number {\n  return 1;\n}\n");
+
+    // when
+    const actual = analyze([a, b, other], null);
+
+    // then
+    const helpers = actual.filter((row) => row.methodName === "isRecord");
+    const noop = actual.find((row) => row.methodName === "noop");
+    expect(helpers).toHaveLength(2);
+    expect(helpers.every((row) => row.smells.duplicateTypeGuards === 1)).toBe(true);
+    expect(noop?.smells.duplicateTypeGuards).toBe(0);
+  });
+
+  it("does not flag a single-file isRecord helper as duplicated", () => {
+    const filePath = path.join(dir, "only.ts");
+    writeFileSync(
+      filePath,
+      [
+        "export function isRecord(value: unknown): value is Record<string, unknown> {",
+        '  return typeof value === "object" && value !== null;',
+        "}",
+      ].join("\n"),
+    );
+
+    // when
+    const [actual] = analyze([filePath], null);
+
+    // then
+    expect(actual.smells.duplicateTypeGuards).toBe(0);
+    expect(actual.smells.typeGuardHelpers).toBe(1);
   });
 });

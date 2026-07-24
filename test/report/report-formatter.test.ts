@@ -6,8 +6,10 @@ import type { MethodMetrics } from "../../src/analysis/method-metrics.js";
 
 function metric(overrides: Partial<MethodMetrics>): MethodMetrics {
   return {
+    file: "src/sample.ts",
     methodName: "m",
     className: "C",
+    startLine: 1,
     complexity: 1,
     coveragePercent: null,
     crapScore: null,
@@ -125,8 +127,10 @@ describe("formatReport", () => {
 describe("totalSmells", () => {
   function base(): MethodMetrics {
     return {
+      file: "src/sample.ts",
       methodName: "m",
       className: "C",
+      startLine: 1,
       complexity: 1,
       coveragePercent: null,
       crapScore: null,

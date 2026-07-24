@@ -48,6 +48,7 @@ function toDescriptor(
 ): MethodDescriptor {
   const findings = findSmells(declared.declaration);
   return {
+    file: sourceFile.fileName,
     name: declared.name,
     className,
     startLine: lineOf(sourceFile, node.getStart(sourceFile)),

@@ -6,6 +6,7 @@ import type { SmellFinding } from "./smells/smell-finding.js";
  * cyclomatic complexity, and AI-slop smells (located findings plus tallies).
  */
 export interface MethodDescriptor {
+  file: string;
   name: string;
   className: string;
   startLine: number;

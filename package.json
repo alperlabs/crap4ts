@@ -1,0 +1,60 @@
+{
+  "name": "crap4ts",
+  "version": "0.1.0",
+  "description": "A CRAP metric analyzer for TypeScript projects, with extra AI-slop heuristics. Modeled after crap4java.",
+  "type": "module",
+  "bin": {
+    "crap4ts": "dist/main.js"
+  },
+  "main": "dist/main.js",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "crap": "tsx src/main.ts",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alperlabs/crap4ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alperlabs/crap4ts/issues"
+  },
+  "homepage": "https://github.com/alperlabs/crap4ts#readme",
+  "author": "alperlabs",
+  "keywords": [
+    "crap",
+    "crap4j",
+    "cyclomatic-complexity",
+    "coverage",
+    "typescript",
+    "code-quality",
+    "ai-slop"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "typescript": "^5.6.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@types/node": "^22.7.5",
+    "@vitest/coverage-istanbul": "^2.1.4",
+    "eslint": "^9.13.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.1",
+    "typescript-eslint": "^8.11.0",
+    "vitest": "^2.1.4"
+  }
+}

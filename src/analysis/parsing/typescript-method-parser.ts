@@ -1,0 +1,64 @@
+import ts from "typescript";
+import { enclosingClassName, fileStem, scriptKindFor } from "./ast-names.js";
+import { describeDeclaredMethod, type DeclaredMethod } from "./method-extractors.js";
+import { countComplexity } from "../complexity/complexity-counter.js";
+import { findSmells, tallyFindings } from "../smells/smell-counter.js";
+import type { MethodDescriptor } from "../method-descriptor.js";
+
+/**
+ * Parse a TypeScript source string into the concrete methods it declares, each
+ * with cyclomatic complexity and AI-slop smell counts.
+ *
+ * `fileLabel` selects the script kind (`.ts`/`.tsx`) and provides a fallback
+ * class name for top-level functions.
+ */
+export function parseMethods(fileLabel: string, source: string): MethodDescriptor[] {
+  const sourceFile = ts.createSourceFile(
+    fileLabel,
+    source,
+    ts.ScriptTarget.Latest,
+    /* setParentNodes */ true,
+    scriptKindFor(fileLabel),
+  );
+
+  const methods: MethodDescriptor[] = [];
+  collect(sourceFile, sourceFile, fileStem(fileLabel), methods);
+  return methods;
+}
+
+function collect(
+  sourceFile: ts.SourceFile,
+  node: ts.Node,
+  className: string,
+  methods: MethodDescriptor[],
+): void {
+  const declared = describeDeclaredMethod(node);
+  if (declared) {
+    methods.push(toDescriptor(sourceFile, node, declared, className));
+  }
+  const nextClass = enclosingClassName(node) ?? className;
+  node.forEachChild((child) => collect(sourceFile, child, nextClass, methods));
+}
+
+function toDescriptor(
+  sourceFile: ts.SourceFile,
+  node: ts.Node,
+  declared: DeclaredMethod,
+  className: string,
+): MethodDescriptor {
+  const findings = findSmells(declared.declaration);
+  return {
+    file: sourceFile.fileName,
+    name: declared.name,
+    className,
+    startLine: lineOf(sourceFile, node.getStart(sourceFile)),
+    endLine: lineOf(sourceFile, Math.max(node.getEnd() - 1, 0)),
+    complexity: countComplexity(declared.body),
+    smells: tallyFindings(findings),
+    findings,
+  };
+}
+
+function lineOf(sourceFile: ts.SourceFile, position: number): number {
+  return sourceFile.getLineAndCharacterOfPosition(position).line + 1;
+}

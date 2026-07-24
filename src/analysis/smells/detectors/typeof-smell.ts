@@ -1,12 +1,12 @@
 import ts from "typescript";
-import { booleanSmell, type SmellDetector } from "../smell-detector.js";
+import { type SmellDetector } from "../smell-detector.js";
 
 /** `typeof x` value-position checks. */
 export const typeofSmell: SmellDetector = {
   key: "typeOf",
   label: "typeof",
   weight: 1,
-  count(node) {
-    return booleanSmell(ts.isTypeOfExpression(node));
+  matches(node) {
+    return ts.isTypeOfExpression(node);
   },
 };

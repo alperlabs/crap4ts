@@ -16,7 +16,9 @@ export function countSmells(
   const counts = emptyCounts(detectors);
   walkWithin(declaration, (node) => {
     for (const detector of detectors) {
-      counts[detector.key] += detector.count(node);
+      if (detector.matches(node)) {
+        counts[detector.key] += 1;
+      }
     }
   });
   return counts;

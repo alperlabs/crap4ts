@@ -119,6 +119,20 @@ describe("smell detectors", () => {
     expect(actual.suppressions).toBe(2);
   });
 
+  it("counts a stack of suppression comments on one statement once", () => {
+    const body = [
+      "// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access",
+      "// @ts-expect-error legacy shim",
+      "return x.missing;",
+    ].join("\n");
+
+    // when
+    const actual = smellsOf(body, "(x: never): number");
+
+    // then — the unit of smell is the suppressed node, not the comment
+    expect(actual.suppressions).toBe(1);
+  });
+
   it("counts loose equality but exempts the == null idiom", () => {
     const body = [
       "if (x == 1) return 1;",

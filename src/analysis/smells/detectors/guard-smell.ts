@@ -12,11 +12,8 @@ export const guardSmell: SmellDetector = {
   key: "isGuards",
   label: "guard",
   weight: 2,
-  count(node) {
-    if (ts.isTypePredicateNode(node)) {
-      return 1;
-    }
-    return isGuardCall(node) ? 1 : 0;
+  matches(node) {
+    return ts.isTypePredicateNode(node) || isGuardCall(node);
   },
 };
 

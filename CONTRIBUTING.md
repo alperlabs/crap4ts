@@ -61,23 +61,26 @@ Create `src/analysis/smells/detectors/<name>-smell.ts`:
 
 ```ts
 import ts from "typescript";
-import { booleanSmell, type SmellDetector } from "../smell-detector.js";
+import { type SmellDetector } from "../smell-detector.js";
 
 /** One-line description of what this smell flags. */
 export const myThingSmell: SmellDetector = {
   key: "myThing", // stable id, also the column key in SmellCounts
   label: "mine", // short header shown in the report breakdown
   weight: 1, // multiplier into the slop score
-  count(node) {
-    return booleanSmell(/* a predicate on a single AST node */);
+  matches(node) {
+    return false; // a predicate on a single AST node
   },
 };
 ```
 
-A detector inspects **one node at a time** and returns its contribution
-(normally `0` or `1`). Keep any non-trivial predicate in a small helper so the
-detector stays under the CRAP threshold. If you need the name of a called
-function or its receiver, reuse `detectors/call-name.ts`.
+A detector is a **pure predicate over one AST node**: it only decides whether
+the node exhibits the smell. The smell counter tallies matching nodes, the
+weight turns tallies into the slop score — detectors never count. This mirrors
+the complexity side, where every decision rule is a `(node) => boolean` too.
+Keep any non-trivial predicate in a small named helper so the detector stays
+under the CRAP threshold. If you need the name of a called function or its
+receiver, reuse `detectors/call-name.ts`.
 
 ### 2. Register it
 

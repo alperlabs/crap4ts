@@ -1,13 +1,13 @@
 import ts from "typescript";
-import { booleanSmell, type SmellDetector } from "../smell-detector.js";
+import { type SmellDetector } from "../smell-detector.js";
 
 /** Nullish-coalescing operators (`??`). */
 export const nullishCoalescingSmell: SmellDetector = {
   key: "nullishCoalescing",
   label: "??",
   weight: 1,
-  count(node) {
-    return booleanSmell(isNullish(node));
+  matches(node) {
+    return isNullish(node);
   },
 };
 

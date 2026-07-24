@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { booleanSmell, type SmellDetector } from "../smell-detector.js";
+import { type SmellDetector } from "../smell-detector.js";
 
 const LOOSE_OPERATORS: ReadonlySet<ts.SyntaxKind> = new Set([
   ts.SyntaxKind.EqualsEqualsToken,
@@ -14,8 +14,8 @@ export const looseEqualitySmell: SmellDetector = {
   key: "looseEquality",
   label: "loose-eq",
   weight: 2,
-  count(node) {
-    return booleanSmell(isLooseComparison(node));
+  matches(node) {
+    return isLooseComparison(node);
   },
 };
 

@@ -1,13 +1,13 @@
 import ts from "typescript";
-import { booleanSmell, type SmellDetector } from "../smell-detector.js";
+import { type SmellDetector } from "../smell-detector.js";
 
 /** Optional-chaining hops (`?.`). */
 export const optionalChainSmell: SmellDetector = {
   key: "optionalChains",
   label: "?.",
   weight: 1,
-  count(node) {
-    return booleanSmell(hasOptionalChainToken(node));
+  matches(node) {
+    return hasOptionalChainToken(node);
   },
 };
 

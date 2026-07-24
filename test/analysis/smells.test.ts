@@ -91,6 +91,67 @@ describe("smell detectors", () => {
     expect(actual.tryCatch).toBe(1);
   });
 
+  it("counts empty catch blocks but not handled ones", () => {
+    // when
+    const swallowed = smellsOf("try { return 1; } catch {}\nreturn 0;", "(): number");
+    const handled = smellsOf("try { return 1; } catch (e) { throw e; }", "(): number");
+
+    // then
+    expect(swallowed.emptyCatches).toBe(1);
+    expect(swallowed.tryCatch).toBe(1);
+    expect(handled.emptyCatches).toBe(0);
+  });
+
+  it("counts suppression comments once each, ignoring ordinary comments", () => {
+    const body = [
+      "// @ts-expect-error legacy shim",
+      "const a = x.missing;",
+      "// eslint-disable-next-line no-console",
+      "const b = 1;",
+      "// a perfectly ordinary comment",
+      "return a + b;",
+    ].join("\n");
+
+    // when
+    const actual = smellsOf(body, "(x: never): number");
+
+    // then
+    expect(actual.suppressions).toBe(2);
+  });
+
+  it("counts loose equality but exempts the == null idiom", () => {
+    const body = [
+      "if (x == 1) return 1;",
+      "if (x != 2) return 2;",
+      "if (x == null) return 3;",
+      "if (null != x) return 4;",
+      "if (x === 5) return 5;",
+      "return x + 0;",
+    ].join("\n");
+
+    // when
+    const actual = smellsOf(body, "(x: number | null): number");
+
+    // then
+    expect(actual.looseEquality).toBe(2);
+  });
+
+  it("counts var declarations but not let, const, or for-loop let", () => {
+    const body = [
+      "var a = 1;",
+      "let b = 2;",
+      "const c = 3;",
+      "for (var i = 0; i < 1; i++) { b += i; }",
+      "return a + b + c;",
+    ].join("\n");
+
+    // when
+    const actual = smellsOf(body, "(): number");
+
+    // then
+    expect(actual.varDeclarations).toBe(2);
+  });
+
   it("counts console calls only", () => {
     // when
     const actual = smellsOf("console.log(x);\nlogger.info(x);\nreturn x;", "(x: number): number");

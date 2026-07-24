@@ -144,7 +144,8 @@ result is an integer `CC >= 1`.
 
 For each declared method the tool shall count the smells defined in the README
 table (guards, `instanceof`, `typeof`, `any`, non-null assertions, `as` casts,
-optional chaining, nullish coalescing, try/catch, `console.*`) over the
+optional chaining, nullish coalescing, try/catch, empty catch blocks,
+`console.*`, suppression comments, loose equality, `var` declarations) over the
 declaration node, without descending into nested declared methods. Each method's
 weighted slop score is the sum of its counts times their weights. Slop scores do
 not affect exit codes.

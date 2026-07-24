@@ -8,7 +8,11 @@ import { asCastSmell } from "./detectors/as-cast-smell.js";
 import { optionalChainSmell } from "./detectors/optional-chain-smell.js";
 import { nullishCoalescingSmell } from "./detectors/nullish-coalescing-smell.js";
 import { tryCatchSmell } from "./detectors/try-catch-smell.js";
+import { emptyCatchSmell } from "./detectors/empty-catch-smell.js";
 import { consoleSmell } from "./detectors/console-smell.js";
+import { suppressionSmell } from "./detectors/suppression-smell.js";
+import { looseEqualitySmell } from "./detectors/loose-equality-smell.js";
+import { varSmell } from "./detectors/var-smell.js";
 
 /**
  * The active set of AI-slop heuristics, in report order.
@@ -27,5 +31,9 @@ export const SMELL_DETECTORS: readonly SmellDetector[] = [
   optionalChainSmell,
   nullishCoalescingSmell,
   tryCatchSmell,
+  emptyCatchSmell,
   consoleSmell,
+  suppressionSmell,
+  looseEqualitySmell,
+  varSmell,
 ];

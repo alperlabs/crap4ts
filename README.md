@@ -32,18 +32,22 @@ the selected files.
 Each method is also scanned for the following smells. They are counted per
 method and rolled up into a weighted **slop score** (weight in parentheses).
 
-| Smell     | What it counts                                                           | Weight |
-| --------- | ------------------------------------------------------------------------ | ------ |
-| `guard`   | `is`/`has`/`can`/`should`-named guard calls and `x is T` type predicates | 2      |
-| `instof`  | `x instanceof Foo` expressions                                           | 1      |
-| `typeof`  | `typeof x` value-position checks                                         | 1      |
-| `any`     | `any` type annotations (`: any`, `as any`, `Array<any>`, ...)            | 3      |
-| `nonNull` | non-null assertions (`x!`)                                               | 2      |
-| `as`      | type assertions (`x as T`, `<T>x`), excluding `as const`                 | 1      |
-| `?.`      | optional-chaining hops                                                   | 1      |
-| `??`      | nullish-coalescing operators                                             | 1      |
-| `try`     | try/catch statements                                                     | 1      |
-| `console` | `console.*` calls                                                        | 2      |
+| Smell        | What it counts                                                           | Weight |
+| ------------ | ------------------------------------------------------------------------ | ------ |
+| `guard`      | `is`/`has`/`can`/`should`-named guard calls and `x is T` type predicates | 2      |
+| `instof`     | `x instanceof Foo` expressions                                           | 1      |
+| `typeof`     | `typeof x` value-position checks                                         | 1      |
+| `any`        | `any` type annotations (`: any`, `as any`, `Array<any>`, ...)            | 3      |
+| `nonNull`    | non-null assertions (`x!`)                                               | 2      |
+| `as`         | type assertions (`x as T`, `<T>x`), excluding `as const`                 | 1      |
+| `?.`         | optional-chaining hops                                                   | 1      |
+| `??`         | nullish-coalescing operators                                             | 1      |
+| `try`        | try/catch statements                                                     | 1      |
+| `mute-catch` | empty `catch` blocks that swallow errors                                 | 3      |
+| `console`    | `console.*` calls                                                        | 2      |
+| `suppress`   | `@ts-ignore`/`@ts-expect-error`/`@ts-nocheck`/`eslint-disable` comments  | 4      |
+| `loose-eq`   | loose equality (`==`, `!=`), excluding the `x == null` idiom             | 2      |
+| `var`        | function-scoped `var` declarations                                       | 2      |
 
 None of these are bugs on their own; in aggregate they are a good smell for
 unreviewed, machine-generated code. The slop score does **not** affect the exit

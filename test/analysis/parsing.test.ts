@@ -1,15 +1,15 @@
 import { describe, it, expect } from "vitest";
 import ts from "typescript";
-import { parseMethods } from "../../src/analysis/parsing/typeScriptMethodParser.js";
+import { parseMethods } from "../../src/analysis/parsing/typescript-method-parser.js";
 import {
   scriptKindFor,
   fileStem,
   enclosingClassName,
-} from "../../src/analysis/parsing/astNames.js";
+} from "../../src/analysis/parsing/ast-names.js";
 import {
   describeDeclaredMethod,
   METHOD_EXTRACTORS,
-} from "../../src/analysis/parsing/methodExtractors.js";
+} from "../../src/analysis/parsing/method-extractors.js";
 import { isDeclaredMethodBoundary } from "../../src/analysis/parsing/boundaries.js";
 
 function names(source: string, label = "Sample.ts"): string[] {
@@ -33,78 +33,110 @@ function firstChildOfKind(source: string, predicate: (n: ts.Node) => boolean): t
 
 describe("scriptKindFor", () => {
   it("maps extensions to script kinds", () => {
-    expect(scriptKindFor("a.tsx")).toBe(ts.ScriptKind.TSX);
-    expect(scriptKindFor("a.jsx")).toBe(ts.ScriptKind.JSX);
-    expect(scriptKindFor("a.js")).toBe(ts.ScriptKind.JS);
-    expect(scriptKindFor("a.mjs")).toBe(ts.ScriptKind.JS);
-    expect(scriptKindFor("a.cjs")).toBe(ts.ScriptKind.JS);
-    expect(scriptKindFor("a.ts")).toBe(ts.ScriptKind.TS);
+    // when
+    const actual = ["a.tsx", "a.jsx", "a.js", "a.mjs", "a.cjs", "a.ts"].map(scriptKindFor);
+
+    // then
+    expect(actual).toEqual([
+      ts.ScriptKind.TSX,
+      ts.ScriptKind.JSX,
+      ts.ScriptKind.JS,
+      ts.ScriptKind.JS,
+      ts.ScriptKind.JS,
+      ts.ScriptKind.TS,
+    ]);
   });
 });
 
 describe("fileStem", () => {
   it("strips directories and extensions", () => {
-    expect(fileStem("src/foo/Bar.ts")).toBe("Bar");
-    expect(fileStem("/abs/path/widget.tsx")).toBe("widget");
-    expect(fileStem("types.d.ts")).toBe("types");
-    expect(fileStem("plain")).toBe("plain");
+    // when
+    const actual = ["src/foo/Bar.ts", "/abs/path/widget.tsx", "types.d.ts", "plain"].map(fileStem);
+
+    // then
+    expect(actual).toEqual(["Bar", "widget", "types", "plain"]);
   });
 });
 
 describe("enclosingClassName", () => {
   it("reads class, interface, and named class-expression names", () => {
-    expect(enclosingClassName(firstChildOfKind("class Foo {}", ts.isClassDeclaration))).toBe("Foo");
-    expect(
-      enclosingClassName(firstChildOfKind("interface Bar {}", ts.isInterfaceDeclaration)),
-    ).toBe("Bar");
-    expect(
-      enclosingClassName(firstChildOfKind("const C = class Named {};", ts.isClassExpression)),
-    ).toBe("Named");
+    const classNode = firstChildOfKind("class Foo {}", ts.isClassDeclaration);
+    const interfaceNode = firstChildOfKind("interface Bar {}", ts.isInterfaceDeclaration);
+    const classExpr = firstChildOfKind("const C = class Named {};", ts.isClassExpression);
+
+    // when
+    const names = [classNode, interfaceNode, classExpr].map(enclosingClassName);
+
+    // then
+    expect(names).toEqual(["Foo", "Bar", "Named"]);
   });
 
   it("returns undefined for anonymous classes and non-containers", () => {
-    expect(
-      enclosingClassName(firstChildOfKind("const C = class {};", ts.isClassExpression)),
-    ).toBeUndefined();
-    expect(
-      enclosingClassName(firstChildOfKind("const x = 1;", ts.isVariableStatement)),
-    ).toBeUndefined();
+    const anonymous = firstChildOfKind("const C = class {};", ts.isClassExpression);
+    const nonContainer = firstChildOfKind("const x = 1;", ts.isVariableStatement);
+
+    // when
+    const names = [anonymous, nonContainer].map(enclosingClassName);
+
+    // then
+    expect(names).toEqual([undefined, undefined]);
   });
 
   it("uses the file stem as the class name when the class is anonymous", () => {
-    const [method] = parseMethods("Sample.ts", "const C = class { m() { return 1; } };");
-    expect(method.className).toBe("Sample");
+    // when
+    const [actual] = parseMethods("Sample.ts", "const C = class { m() { return 1; } };");
+
+    // then
+    expect(actual.className).toBe("Sample");
   });
 });
 
 describe("declaration names", () => {
   it("reads string-literal and numeric member names", () => {
-    expect(names('const o = { "weird-name"() { return 1; }, 0() { return 2; } };')).toEqual([
-      "0",
-      "weird-name",
-    ]);
+    // when
+    const actual = names('const o = { "weird-name"() { return 1; }, 0() { return 2; } };');
+
+    // then
+    expect(actual).toEqual(["0", "weird-name"]);
   });
 
   it("reads computed member names via source text", () => {
-    const [method] = parseMethods("Sample.ts", 'const o = { ["a" + "b"]: () => 1 };');
-    expect(method.name).toContain("a");
+    // when
+    const [actual] = parseMethods("Sample.ts", 'const o = { ["a" + "b"]: () => 1 };');
+
+    // then
+    expect(actual.name).toContain("a");
   });
 });
 
 describe("method extractors", () => {
   it("exposes an ordered registry and a first-match describe", () => {
-    expect(METHOD_EXTRACTORS.length).toBeGreaterThan(0);
     const fn = firstChildOfKind("function f() { return 1; }", ts.isFunctionDeclaration);
-    expect(describeDeclaredMethod(fn)?.name).toBe("f");
+
+    // when
+    const actual = describeDeclaredMethod(fn);
+
+    // then
+    expect(METHOD_EXTRACTORS.length).toBeGreaterThan(0);
+    expect(actual?.name).toBe("f");
   });
 
   it("returns null for non-declarations", () => {
     const literal = firstChildOfKind("const x = 5;", ts.isNumericLiteral);
-    expect(describeDeclaredMethod(literal)).toBeNull();
+
+    // when
+    const actual = describeDeclaredMethod(literal);
+
+    // then
+    expect(actual).toBeNull();
   });
 
   it("ignores const bindings that are not functions and destructured bindings", () => {
-    expect(names("const x = 5;\nconst { a } = obj;")).toEqual([]);
+    // when
+    const actual = names("const x = 5;\nconst { a } = obj;");
+
+    // then
+    expect(actual).toEqual([]);
   });
 
   it("ignores abstract accessors without a body but keeps concrete ones", () => {
@@ -114,17 +146,24 @@ describe("method extractors", () => {
       "  get present(): number { return 1; }",
       "}",
     ].join("\n");
-    expect(names(source)).toEqual(["get present"]);
+
+    // when
+    const actual = names(source);
+
+    // then
+    expect(actual).toEqual(["get present"]);
   });
 });
 
 describe("isDeclaredMethodBoundary", () => {
   it("is true for declared methods and false otherwise", () => {
-    expect(
-      isDeclaredMethodBoundary(firstChildOfKind("function f() {}", ts.isFunctionDeclaration)),
-    ).toBe(true);
-    expect(isDeclaredMethodBoundary(firstChildOfKind("const x = 1;", ts.isNumericLiteral))).toBe(
-      false,
-    );
+    const declared = firstChildOfKind("function f() {}", ts.isFunctionDeclaration);
+    const literal = firstChildOfKind("const x = 1;", ts.isNumericLiteral);
+
+    // when
+    const actual = [isDeclaredMethodBoundary(declared), isDeclaredMethodBoundary(literal)];
+
+    // then
+    expect(actual).toEqual([true, false]);
   });
 });

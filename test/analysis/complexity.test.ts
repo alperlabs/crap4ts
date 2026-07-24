@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import ts from "typescript";
-import { parseMethods } from "../../src/analysis/parsing/typeScriptMethodParser.js";
-import { decisionDelta } from "../../src/analysis/complexity/decisionRules.js";
+import { parseMethods } from "../../src/analysis/parsing/typescript-method-parser.js";
+import { decisionDelta } from "../../src/analysis/complexity/decision-rules.js";
 
 function complexityOf(body: string, signature = "()"): number {
   const [method] = parseMethods("Sample.ts", `function target${signature} {\n${body}\n}`);
@@ -23,8 +23,13 @@ describe("complexity", () => {
       "    return 2;",
       "  }",
     ].join("\n");
+
+    // when
+    const actual = complexityOf(body, "(a: boolean, b: boolean, c: boolean)");
+
+    // then
     // base + 3 loops(for/of/in) + while + do + if + && + || + ternary + catch = 11
-    expect(complexityOf(body, "(a: boolean, b: boolean, c: boolean)")).toBe(11);
+    expect(actual).toBe(11);
   });
 
   it("counts case clauses but not default", () => {
@@ -35,21 +40,39 @@ describe("complexity", () => {
       "    default: return 0;",
       "  }",
     ].join("\n");
-    expect(complexityOf(body, "(x: number)")).toBe(3); // base + 2 cases
+
+    // when
+    const actual = complexityOf(body, "(x: number)");
+
+    // then
+    expect(actual).toBe(3); // base + 2 cases
   });
 
   it("counts nullish coalescing", () => {
-    expect(complexityOf("  return a ?? 0;", "(a: number | null)")).toBe(2);
+    // when
+    const actual = complexityOf("  return a ?? 0;", "(a: number | null)");
+
+    // then
+    expect(actual).toBe(2);
   });
 
   it("has a minimum complexity of 1", () => {
-    expect(complexityOf("  return 1;")).toBe(1);
+    // when
+    const actual = complexityOf("  return 1;");
+
+    // then
+    expect(actual).toBe(1);
   });
 });
 
 describe("decisionDelta", () => {
   it("returns 0 for a non-decision node", () => {
     const sourceFile = ts.createSourceFile("x.ts", "const x = 1;", ts.ScriptTarget.Latest, true);
-    expect(decisionDelta(sourceFile)).toBe(0);
+
+    // when
+    const actual = decisionDelta(sourceFile);
+
+    // then
+    expect(actual).toBe(0);
   });
 });

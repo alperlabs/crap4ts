@@ -119,8 +119,8 @@ src/
     complexity/   decision-rule registry + cyclomatic complexity counter
     smells/       smell-detector registry (one file per heuristic)
     parsing/      TypeScript AST → declared methods (extractor registry)
-    crapScore.ts  the CRAP formula
-    crapAnalyzer.ts
+    crap-score.ts  the CRAP formula
+    crap-analyzer.ts
   coverage/       Istanbul coverage parsing + the coverage runner
   discovery/      source-file finder, changed-file detector, module resolver
   report/         text report + slop breakdown
@@ -130,7 +130,7 @@ src/
 Smells, complexity decision points, and method extraction are each expressed as
 a **registry of small, single-purpose units** rather than a growing `switch`, so
 the code stays flat and extending it means adding a list entry. A single
-traversal contract (`parsing/methodTraversal.ts`) defines which nodes belong to
+traversal contract (`parsing/method-traversal.ts`) defines which nodes belong to
 a method, so the complexity and smell counters always agree.
 
 ## Development

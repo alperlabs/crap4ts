@@ -11,7 +11,7 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       // Thin IO adapters and the entry point are integration-tested, not
       // unit-covered; excluding them keeps the coverage signal about logic.
-      exclude: ["src/main.ts", "src/coverage/processCommandExecutor.ts"],
+      exclude: ["src/main.ts", "src/coverage/process-command-executor.ts"],
       thresholds: {
         statements: 100,
         branches: 100,

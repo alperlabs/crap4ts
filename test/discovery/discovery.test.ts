@@ -6,20 +6,21 @@ import path from "node:path";
 import {
   findSourceFilesUnderSrc,
   isAnalyzableSource,
-} from "../../src/discovery/sourceFileFinder.js";
+} from "../../src/discovery/source-file-finder.js";
 import {
   changedFilesUnderSrc,
   parseStatusLine,
   renameTarget,
-} from "../../src/discovery/changedFileDetector.js";
-import { moduleRootFor, groupByModuleRoot } from "../../src/discovery/moduleResolver.js";
+} from "../../src/discovery/changed-file-detector.js";
+import { moduleRootFor, groupByModuleRoot } from "../../src/discovery/module-resolver.js";
 
 describe("isAnalyzableSource", () => {
   it("accepts .ts/.tsx and rejects declarations and others", () => {
-    expect(isAnalyzableSource("a.ts")).toBe(true);
-    expect(isAnalyzableSource("a.tsx")).toBe(true);
-    expect(isAnalyzableSource("a.d.ts")).toBe(false);
-    expect(isAnalyzableSource("a.js")).toBe(false);
+    // when
+    const actual = ["a.ts", "a.tsx", "a.d.ts", "a.js"].map(isAnalyzableSource);
+
+    // then
+    expect(actual).toEqual([true, true, false, false]);
   });
 });
 
@@ -43,8 +44,11 @@ describe("filesystem and git discovery", () => {
     writeFileSync(path.join(dir, "src", "nested", "c.tsx"), "");
     writeFileSync(path.join(dir, "src", "node_modules", "dep.ts"), "");
 
-    const files = findSourceFilesUnderSrc(dir).map((f) => path.relative(dir, f));
-    expect(files).toEqual([
+    // when
+    const actual = findSourceFilesUnderSrc(dir).map((f) => path.relative(dir, f));
+
+    // then
+    expect(actual).toEqual([
       path.join("src", "a.ts"),
       path.join("src", "b.ts"),
       path.join("src", "nested", "c.tsx"),
@@ -52,7 +56,11 @@ describe("filesystem and git discovery", () => {
   });
 
   it("returns empty when there is no src directory", () => {
-    expect(findSourceFilesUnderSrc(dir)).toEqual([]);
+    // when
+    const actual = findSourceFilesUnderSrc(dir);
+
+    // then
+    expect(actual).toEqual([]);
   });
 
   it("keeps only analyzable changed files under src, handling renames (injected git)", () => {
@@ -66,8 +74,11 @@ describe("filesystem and git discovery", () => {
       "",
     ].join("\n");
 
-    const files = changedFilesUnderSrc(dir, () => output).map((f) => path.relative(dir, f));
-    expect(files).toEqual([
+    // when
+    const actual = changedFilesUnderSrc(dir, () => output).map((f) => path.relative(dir, f));
+
+    // then
+    expect(actual).toEqual([
       path.join("src", "keep.ts"),
       path.join("src", "new.tsx"),
       path.join("src", "renamed.ts"),
@@ -79,16 +90,27 @@ describe("filesystem and git discovery", () => {
     mkdirSync(path.join(dir, "src"), { recursive: true });
     writeFileSync(path.join(dir, "src", "fresh.ts"), "export const x = 1;\n");
 
-    const files = changedFilesUnderSrc(dir).map((f) => path.relative(dir, f));
-    expect(files).toContain(path.join("src", "fresh.ts"));
+    // when
+    const actual = changedFilesUnderSrc(dir).map((f) => path.relative(dir, f));
+
+    // then
+    expect(actual).toContain(path.join("src", "fresh.ts"));
   });
 
   it("parses and de-quotes status lines, ignoring blanks", () => {
-    expect(parseStatusLine(dir, "")).toBeNull();
-    expect(parseStatusLine(dir, " M ")).toBeNull();
-    expect(parseStatusLine(dir, ' M "src/a b.ts"')).toBe(path.resolve(dir, "src/a b.ts"));
-    expect(renameTarget("a.ts")).toBe("a.ts");
-    expect(renameTarget("old.ts -> new.ts")).toBe("new.ts");
+    // when
+    const blank = parseStatusLine(dir, "");
+    const codeOnly = parseStatusLine(dir, " M ");
+    const quoted = parseStatusLine(dir, ' M "src/a b.ts"');
+    const plain = renameTarget("a.ts");
+    const renamed = renameTarget("old.ts -> new.ts");
+
+    // then
+    expect(blank).toBeNull();
+    expect(codeOnly).toBeNull();
+    expect(quoted).toBe(path.resolve(dir, "src/a b.ts"));
+    expect(plain).toBe("a.ts");
+    expect(renamed).toBe("new.ts");
   });
 });
 
@@ -107,31 +129,54 @@ describe("moduleResolver", () => {
     mkdirSync(path.join(dir, "packages", "a", "src"), { recursive: true });
     writeFileSync(path.join(dir, "package.json"), "{}");
     writeFileSync(path.join(dir, "packages", "a", "package.json"), "{}");
-    expect(moduleRootFor(dir, path.join(dir, "packages", "a", "src", "x.ts"))).toBe(
-      path.join(dir, "packages", "a"),
-    );
+
+    // when
+    const actual = moduleRootFor(dir, path.join(dir, "packages", "a", "src", "x.ts"));
+
+    // then
+    expect(actual).toBe(path.join(dir, "packages", "a"));
   });
 
   it("falls back to the project root when only the root has a package.json", () => {
     mkdirSync(path.join(dir, "src"), { recursive: true });
     writeFileSync(path.join(dir, "package.json"), "{}");
-    expect(moduleRootFor(dir, path.join(dir, "src", "x.ts"))).toBe(path.resolve(dir));
+
+    // when
+    const actual = moduleRootFor(dir, path.join(dir, "src", "x.ts"));
+
+    // then
+    expect(actual).toBe(path.resolve(dir));
   });
 
   it("resolves a file that sits directly in the module root", () => {
     writeFileSync(path.join(dir, "package.json"), "{}");
-    expect(moduleRootFor(dir, path.join(dir, "x.ts"))).toBe(path.resolve(dir));
+
+    // when
+    const actual = moduleRootFor(dir, path.join(dir, "x.ts"));
+
+    // then
+    expect(actual).toBe(path.resolve(dir));
   });
 
   it("accepts a directory as the target", () => {
     mkdirSync(path.join(dir, "pkg"), { recursive: true });
     writeFileSync(path.join(dir, "pkg", "package.json"), "{}");
-    expect(moduleRootFor(dir, path.join(dir, "pkg"))).toBe(path.join(dir, "pkg"));
+
+    // when
+    const actual = moduleRootFor(dir, path.join(dir, "pkg"));
+
+    // then
+    expect(actual).toBe(path.join(dir, "pkg"));
   });
 
   it("falls back to the project root when no package.json exists at all", () => {
     mkdirSync(path.join(dir, "src"), { recursive: true });
-    expect(moduleRootFor(dir, path.join(dir, "src", "x.ts"))).toBe(path.resolve(dir));
+
+    // when
+    const actual = moduleRootFor(dir, path.join(dir, "src", "x.ts"));
+
+    // then
+    expect(actual).toBe(path.resolve(dir));
   });
 
   it("groups files by module root preserving order", () => {
@@ -141,12 +186,15 @@ describe("moduleResolver", () => {
     writeFileSync(path.join(dir, "a", "package.json"), "{}");
     writeFileSync(path.join(dir, "b", "package.json"), "{}");
 
-    const grouped = groupByModuleRoot(dir, [
+    // when
+    const actual = groupByModuleRoot(dir, [
       path.join(dir, "a", "x.ts"),
       path.join(dir, "b", "y.ts"),
       path.join(dir, "a", "z.ts"),
     ]);
-    expect([...grouped.keys()]).toEqual([path.join(dir, "a"), path.join(dir, "b")]);
-    expect(grouped.get(path.join(dir, "a"))).toHaveLength(2);
+
+    // then
+    expect([...actual.keys()]).toEqual([path.join(dir, "a"), path.join(dir, "b")]);
+    expect(actual.get(path.join(dir, "a"))).toHaveLength(2);
   });
 });

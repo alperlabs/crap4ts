@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import ts from "typescript";
 import { parseMethods } from "../../src/analysis/parsing/typescript-method-parser.js";
-import { decisionDelta } from "../../src/analysis/complexity/decision-rules.js";
+import { isDecisionPoint } from "../../src/analysis/complexity/decision-rules.js";
 
 function complexityOf(body: string, signature = "()"): number {
   const [method] = parseMethods("Sample.ts", `function target${signature} {\n${body}\n}`);
@@ -65,14 +65,14 @@ describe("complexity", () => {
   });
 });
 
-describe("decisionDelta", () => {
-  it("returns 0 for a non-decision node", () => {
+describe("isDecisionPoint", () => {
+  it("rejects a non-decision node", () => {
     const sourceFile = ts.createSourceFile("x.ts", "const x = 1;", ts.ScriptTarget.Latest, true);
 
     // when
-    const actual = decisionDelta(sourceFile);
+    const actual = isDecisionPoint(sourceFile);
 
     // then
-    expect(actual).toBe(0);
+    expect(actual).toBe(false);
   });
 });

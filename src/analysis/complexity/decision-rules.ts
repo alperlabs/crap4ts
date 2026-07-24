@@ -30,7 +30,7 @@ export const DECISION_RULES: readonly DecisionRule[] = [
   isShortCircuit,
 ];
 
-/** The complexity contributed by a single node (`0` or `1`). */
-export function decisionDelta(node: ts.Node): number {
-  return DECISION_RULES.some((rule) => rule(node)) ? 1 : 0;
+/** Whether a single node adds one to cyclomatic complexity. */
+export function isDecisionPoint(node: ts.Node): boolean {
+  return DECISION_RULES.some((rule) => rule(node));
 }

@@ -9,8 +9,8 @@ import { toFinding, type SmellFinding } from "./smell-finding.js";
  * Every smell occurrence in a declared method's declaration node (so parameter
  * and return types are included), without descending into nested declared
  * methods. Findings are the source of truth: they carry the detector, file,
- * and line of each occurrence, in source order; {@link countSmells} is a tally
- * of them.
+ * and line of each occurrence, in source order; {@link tallyFindings} turns
+ * them into per-detector counts.
  */
 export function findSmells(
   declaration: ts.Node,
@@ -23,12 +23,11 @@ export function findSmells(
   );
 }
 
-/** Per-detector tallies of {@link findSmells}, one entry per registered detector. */
-export function countSmells(
-  declaration: ts.Node,
+/** Per-detector tallies of a set of findings, one entry per registered detector. */
+export function tallyFindings(
+  findings: readonly SmellFinding[],
   detectors: readonly SmellDetector[] = SMELL_DETECTORS,
 ): SmellCounts {
-  const findings = findSmells(declaration, detectors);
   return Object.fromEntries(
     detectors.map((detector) => [detector.key, occurrencesOf(detector, findings)]),
   );

@@ -5,6 +5,7 @@ import { type SmellDetector } from "../smell-detector.js";
 export const instanceofSmell: SmellDetector = {
   key: "instanceOf",
   label: "instof",
+  category: "style",
   weight: 1,
   advice: "Prefer polymorphism or discriminated unions over instanceof checks.",
   matches(node) {

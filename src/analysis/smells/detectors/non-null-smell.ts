@@ -5,6 +5,7 @@ import { type SmellDetector } from "../smell-detector.js";
 export const nonNullSmell: SmellDetector = {
   key: "nonNullAssertions",
   label: "nonNull",
+  category: "escape-hatch",
   weight: 2,
   advice: "Handle the null case, or restructure so the value is provably present.",
   matches(node) {

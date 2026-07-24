@@ -29,12 +29,20 @@ describe("parseCliArguments", () => {
     expect(actual.mode).toBe(CliMode.ChangedSrc);
   });
 
-  it("collects explicit file arguments and ignores unknown flags", () => {
+  it("collects explicit file arguments", () => {
     // when
-    const actual = parseCliArguments(["a.ts", "--verbose", "b.ts"]);
+    const actual = parseCliArguments(["a.ts", "b.ts"]);
 
     // then
     expect(actual).toEqual({ mode: CliMode.ExplicitFiles, fileArgs: ["a.ts", "b.ts"] });
+  });
+
+  it("rejects unknown flags instead of silently analyzing nothing", () => {
+    // when
+    const act = () => parseCliArguments(["--verbose", "a.ts"]);
+
+    // then
+    expect(act).toThrow(/Unknown option: --verbose/);
   });
 
   it("rejects --changed combined with files", () => {

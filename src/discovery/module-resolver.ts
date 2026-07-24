@@ -1,5 +1,6 @@
-import { existsSync, statSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
+import { isDirectory } from "./file-system.js";
 
 /**
  * The module root that owns a file: the nearest ancestor directory containing
@@ -50,13 +51,5 @@ function appendTo(grouped: Map<string, string[]>, key: string, value: string): v
     bucket.push(value);
   } else {
     grouped.set(key, [value]);
-  }
-}
-
-function isDirectory(candidate: string): boolean {
-  try {
-    return statSync(candidate).isDirectory();
-  } catch {
-    return false;
   }
 }

@@ -111,6 +111,32 @@ describe("parseCoverage", () => {
     expect(actual!.percentForRange(1, 100)).toBeNull();
   });
 
+  it("tolerates structurally malformed reports without trusting any field", () => {
+    const filePath = path.join(dir, "weird.ts");
+    const json = write({
+      skipped: "not an object entry",
+      [filePath]: {
+        path: 42,
+        statementMap: {
+          "0": "not a location",
+          "1": { start: "not a position" },
+          "2": { start: { line: 7, column: 0 }, end: { line: 7, column: 1 } },
+        },
+        s: { "2": "not a count" },
+      },
+    });
+
+    // when
+    const parsed = parseCoverage(json);
+    const topLevelJunk = parseCoverage(write(42));
+
+    // then — the one valid statement survives, counted as uncovered
+    const actual = parsed.get(normalizePath(filePath));
+    expect(parsed.size).toBe(1);
+    expect(actual!.percentForRange(1, 10)).toBe(0);
+    expect(topLevelJunk.size).toBe(0);
+  });
+
   it("drops statements with a non-numeric line", () => {
     const filePath = path.join(dir, "bad.ts");
     const json = write({

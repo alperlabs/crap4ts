@@ -2,10 +2,14 @@ import { describe, it, expect } from "vitest";
 import ts from "typescript";
 import { parseMethods } from "../../src/analysis/parsing/typescript-method-parser.js";
 import type { SmellCounts } from "../../src/analysis/smells/smell-counts.js";
-import { slopScore, emptyCounts, addCounts } from "../../src/analysis/smells/smell-counts.js";
+import {
+  slopScore,
+  emptyCounts,
+  addCounts,
+  countFor,
+} from "../../src/analysis/smells/smell-counts.js";
 import { SMELL_DETECTORS } from "../../src/analysis/smells/registry.js";
 import { findSmells } from "../../src/analysis/smells/smell-counter.js";
-import { isGuardName } from "../../src/analysis/smells/detectors/guard-smell.js";
 import { callTargetName, callReceiverName } from "../../src/analysis/smells/detectors/call-name.js";
 
 function smellsOf(body: string, signature = "(x: any): any"): SmellCounts {
@@ -175,13 +179,70 @@ describe("smell detectors", () => {
     expect(actual.consoleCalls).toBe(1);
   });
 
-  it("counts type predicates and guard-style calls as guards", () => {
+  it("counts consecutive guard clauses as a ladder, scoring N - 1", () => {
+    const body = [
+      "if (x === undefined) return 0;",
+      "if (typeof x !== 'number') { throw new Error('no'); }",
+      "if (x < 0) return -1;",
+      "return x;",
+    ].join("\n");
+
+    // when
+    const actual = smellsOf(body, "(x: unknown): number");
+
+    // then
+    expect(actual.guardLadders).toBe(2);
+  });
+
+  it("does not flag a single early return", () => {
+    // when
+    const actual = smellsOf("if (x === 0) return 0;\nreturn x + 1;", "(x: number): number");
+
+    // then
+    expect(actual.guardLadders).toBe(0);
+  });
+
+  it("does not flag if/else chains or multi-statement branches", () => {
+    const body = [
+      "if (x === 0) return 0; else x += 1;",
+      "if (x === 1) { x += 1; return x; }",
+      "if (x === 2) if (x === 2) return 2;",
+      "return x;",
+    ].join("\n");
+
+    // when
+    const actual = smellsOf(body, "(x: number): number");
+
+    // then
+    expect(actual.guardLadders).toBe(0);
+  });
+
+  it("counts guard ladders using continue and break inside loops", () => {
+    const body = [
+      "let total = 0;",
+      "for (const item of items) {",
+      "  if (item === 0) continue;",
+      "  if (item < 0) break;",
+      "  total += item;",
+      "}",
+      "return total;",
+    ].join("\n");
+
+    // when
+    const actual = smellsOf(body, "(items: number[]): number");
+
+    // then
+    expect(actual.guardLadders).toBe(1);
+  });
+
+  it("does not flag well-named predicates, compiler-API guards, or type predicates", () => {
     const source = [
       "function isThing(x: unknown): x is string {",
       "  return typeof x === 'string';",
       "}",
-      "function use(x: unknown): number {",
-      "  return isThing(x) ? 1 : 0;",
+      "function use(node: unknown): number {",
+      "  const viaApi = ts.isCallExpression(node) ? 1 : 0;",
+      "  return isThing(node) ? viaApi + 1 : viaApi;",
       "}",
     ].join("\n");
 
@@ -189,8 +250,8 @@ describe("smell detectors", () => {
     const actual = parseMethods("Sample.ts", source);
 
     // then
-    expect(actual.find((m) => m.name === "isThing")!.smells.isGuards).toBe(1);
-    expect(actual.find((m) => m.name === "use")!.smells.isGuards).toBe(1);
+    expect(actual.find((m) => m.name === "isThing")!.smells.guardLadders).toBe(0);
+    expect(actual.find((m) => m.name === "use")!.smells.guardLadders).toBe(0);
   });
 
   it("does not leak nested method smells to the parent", () => {
@@ -254,18 +315,6 @@ describe("detector registry hygiene", () => {
   });
 });
 
-describe("guard names", () => {
-  it("matches is/has/can/should prefixes", () => {
-    // when
-    const matches = ["isReady", "hasValue", "canRun", "shouldStop"].map(isGuardName);
-    const nonMatches = ["island", "compute"].map(isGuardName);
-
-    // then
-    expect(matches).toEqual([true, true, true, true]);
-    expect(nonMatches).toEqual([false, false]);
-  });
-});
-
 describe("call name helpers", () => {
   function firstCall(source: string): ts.CallExpression {
     const sf = ts.createSourceFile("x.ts", source, ts.ScriptTarget.Latest, true);
@@ -308,7 +357,7 @@ describe("call name helpers", () => {
 describe("smell aggregation", () => {
   it("weights the slop score by detector", () => {
     const counts = emptyCounts(SMELL_DETECTORS);
-    counts.isGuards = 1;
+    counts.guardLadders = 1;
     counts.anyTypes = 2;
 
     // when
@@ -329,5 +378,18 @@ describe("smell aggregation", () => {
 
     // then
     expect(actual.tryCatch).toBe(3);
+  });
+
+  it("treats missing keys as zero instead of producing NaN", () => {
+    // when
+    const added = addCounts({ tryCatch: 1, orphan: undefined as unknown as number }, {});
+    const score = slopScore({}, SMELL_DETECTORS);
+
+    // then
+    expect(added.tryCatch).toBe(1);
+    expect(added.orphan).toBe(0);
+    expect(score).toBe(0);
+    expect(countFor({ present: 2 }, "present")).toBe(2);
+    expect(countFor({}, "absent")).toBe(0);
   });
 });

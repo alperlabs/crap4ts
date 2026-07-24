@@ -13,6 +13,7 @@ const LOOSE_OPERATORS: ReadonlySet<ts.SyntaxKind> = new Set([
 export const looseEqualitySmell: SmellDetector = {
   key: "looseEquality",
   label: "loose-eq",
+  category: "escape-hatch",
   weight: 2,
   advice: "Use === and !== for predictable comparisons.",
   matches(node) {

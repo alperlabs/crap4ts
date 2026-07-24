@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { CliApplication } from "../../src/cli/cli-application.js";
+import { CliApplication, messageOf } from "../../src/cli/cli-application.js";
 import { CoverageRunner } from "../../src/coverage/coverage-runner.js";
 import type { CommandExecutor } from "../../src/coverage/command-executor.js";
 
@@ -178,5 +178,13 @@ describe("CliApplication", () => {
       stdout.mockRestore();
       stderr.mockRestore();
     }
+  });
+});
+
+describe("messageOf", () => {
+  it("describes Error and non-Error throwables", () => {
+    // then
+    expect(messageOf(new Error("boom"))).toBe("boom");
+    expect(messageOf("plain string")).toBe("plain string");
   });
 });

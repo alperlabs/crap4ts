@@ -18,11 +18,19 @@ export function parseCliArguments(args: string[]): CliArguments {
 }
 
 function parseActionArguments(args: string[]): CliArguments {
+  rejectUnknownFlags(args);
   const files = args.filter((arg) => !isFlag(arg));
   if (args.includes(CHANGED_FLAG)) {
     return parseChanged(files);
   }
   return { mode: CliMode.ExplicitFiles, fileArgs: files };
+}
+
+function rejectUnknownFlags(args: string[]): void {
+  const unknown = args.find((arg) => isFlag(arg) && arg !== CHANGED_FLAG);
+  if (unknown !== undefined) {
+    throw new Error(`Unknown option: ${unknown}`);
+  }
 }
 
 function parseChanged(files: string[]): CliArguments {

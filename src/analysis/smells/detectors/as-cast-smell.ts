@@ -5,6 +5,7 @@ import { type SmellDetector } from "../smell-detector.js";
 export const asCastSmell: SmellDetector = {
   key: "asCasts",
   label: "as",
+  category: "escape-hatch",
   weight: 1,
   advice: "Let inference or a type guard prove the type instead of asserting it.",
   matches(node) {

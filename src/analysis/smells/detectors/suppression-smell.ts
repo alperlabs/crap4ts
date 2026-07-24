@@ -14,6 +14,7 @@ const SUPPRESSION = /@ts-ignore|@ts-expect-error|@ts-nocheck|eslint-disable/;
 export const suppressionSmell: SmellDetector = {
   key: "suppressions",
   label: "suppress",
+  category: "escape-hatch",
   weight: 4,
   advice: "Fix the underlying diagnostic instead of silencing the tool.",
   matches(node) {

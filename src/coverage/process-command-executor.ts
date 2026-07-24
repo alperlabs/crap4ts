@@ -5,6 +5,9 @@ import type { CommandExecutor } from "./command-executor.js";
 export class ProcessCommandExecutor implements CommandExecutor {
   run(command: string[], directory: string): Promise<number> {
     const [program, ...args] = command;
+    if (program === undefined) {
+      return Promise.reject(new Error("Empty coverage command"));
+    }
     return new Promise((resolve, reject) => {
       const child = spawn(program, args, {
         cwd: directory,

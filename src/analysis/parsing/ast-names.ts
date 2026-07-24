@@ -38,7 +38,6 @@ export function scriptKindFor(fileName: string): ts.ScriptKind {
 
 /** Base file name without directories or a TypeScript/JavaScript extension. */
 export function fileStem(fileLabel: string): string {
-  const parts = fileLabel.split(/[\\/]/);
-  const base = parts[parts.length - 1];
+  const base = fileLabel.replace(/^.*[\\/]/, "");
   return base.replace(/\.(d\.ts|tsx?|jsx?|mjs|cjs)$/, "");
 }

@@ -67,6 +67,7 @@ import { type SmellDetector } from "../smell-detector.js";
 export const myThingSmell: SmellDetector = {
   key: "myThing", // stable id, also the column key in SmellCounts
   label: "mine", // short header shown in the report breakdown
+  category: "style", // "escape-hatch" (strong signal) or "style" (soft signal)
   weight: 1, // multiplier into the slop score
   advice: "How to fix it, in one sentence.", // shown alongside findings
   matches(node) {

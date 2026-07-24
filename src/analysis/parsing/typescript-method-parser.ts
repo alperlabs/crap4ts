@@ -2,7 +2,7 @@ import ts from "typescript";
 import { enclosingClassName, fileStem, scriptKindFor } from "./ast-names.js";
 import { describeDeclaredMethod, type DeclaredMethod } from "./method-extractors.js";
 import { countComplexity } from "../complexity/complexity-counter.js";
-import { countSmells } from "../smells/smell-counter.js";
+import { findSmells, tallyFindings } from "../smells/smell-counter.js";
 import type { MethodDescriptor } from "../method-descriptor.js";
 
 /**
@@ -46,13 +46,15 @@ function toDescriptor(
   declared: DeclaredMethod,
   className: string,
 ): MethodDescriptor {
+  const findings = findSmells(declared.declaration);
   return {
     name: declared.name,
     className,
     startLine: lineOf(sourceFile, node.getStart(sourceFile)),
     endLine: lineOf(sourceFile, Math.max(node.getEnd() - 1, 0)),
     complexity: countComplexity(declared.body),
-    smells: countSmells(declared.declaration),
+    smells: tallyFindings(findings),
+    findings,
   };
 }
 

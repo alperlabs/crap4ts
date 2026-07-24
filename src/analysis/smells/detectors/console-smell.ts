@@ -6,6 +6,7 @@ import { callReceiverName } from "./call-name.js";
 export const consoleSmell: SmellDetector = {
   key: "consoleCalls",
   label: "console",
+  category: "style",
   weight: 2,
   advice: "Route output through a logger, or delete the debug statement.",
   matches(node) {

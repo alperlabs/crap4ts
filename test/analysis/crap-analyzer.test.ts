@@ -13,6 +13,7 @@ function metric(crapScore: number | null, methodName = "m"): MethodMetrics {
     coveragePercent: crapScore,
     crapScore,
     smells: {},
+    findings: [],
     slopScore: 0,
   };
 }

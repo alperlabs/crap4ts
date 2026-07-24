@@ -5,6 +5,7 @@ import { type SmellDetector } from "../smell-detector.js";
 export const nullishCoalescingSmell: SmellDetector = {
   key: "nullishCoalescing",
   label: "??",
+  category: "style",
   weight: 1,
   advice: "Push defaults to the edge where the value is created.",
   matches(node) {

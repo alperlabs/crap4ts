@@ -12,6 +12,7 @@ function metric(overrides: Partial<MethodMetrics>): MethodMetrics {
     coveragePercent: null,
     crapScore: null,
     smells: emptyCounts(SMELL_DETECTORS),
+    findings: [],
     slopScore: 0,
     ...overrides,
   };
@@ -71,6 +72,54 @@ describe("formatReport", () => {
     expect(actual).not.toContain("Sloppiest methods:");
     expect(actual).toContain("Total slop score: 0");
   });
+
+  it("groups the breakdown by category, escape hatches first, tolerating missing keys", () => {
+    // when — an empty smells object must render as zeros, never NaN
+    const actual = formatReport([metric({ smells: {} })]);
+
+    // then
+    expect(actual.indexOf("Escape hatches")).toBeLessThan(actual.indexOf("Style heuristics"));
+    expect(actual.indexOf("Style heuristics")).toBeLessThan(actual.indexOf("Total slop score"));
+  });
+
+  it("lists findings as file:line with label and advice, sorted by location", () => {
+    const anyDetector = SMELL_DETECTORS.find((d) => d.key === "anyTypes")!;
+    const varDetector = SMELL_DETECTORS.find((d) => d.key === "varDeclarations")!;
+    const metrics = [
+      metric({
+        findings: [
+          { detector: varDetector, file: "src/b.ts", line: 3 },
+          { detector: anyDetector, file: "src/a.ts", line: 7 },
+          { detector: anyDetector, file: "src/a.ts", line: 2 },
+        ],
+      }),
+    ];
+
+    // when
+    const actual = formatReport(metrics);
+
+    // then
+    expect(actual).toContain("Findings");
+    expect(actual).toContain("src/a.ts:7");
+    expect(actual).toContain(anyDetector.advice);
+    expect(actual.indexOf("src/a.ts:2")).toBeLessThan(actual.indexOf("src/a.ts:7"));
+    expect(actual.indexOf("src/a.ts:7")).toBeLessThan(actual.indexOf("src/b.ts:3"));
+  });
+
+  it("keeps paths outside the working directory absolute and omits empty findings", () => {
+    const detector = SMELL_DETECTORS.find((d) => d.key === "anyTypes")!;
+    const outside = "/elsewhere/x.ts";
+
+    // when
+    const withOutside = formatReport([
+      metric({ findings: [{ detector, file: outside, line: 1 }] }),
+    ]);
+    const clean = formatReport([metric({})]);
+
+    // then
+    expect(withOutside).toContain(`${outside}:1`);
+    expect(clean).not.toContain("Findings");
+  });
 });
 
 describe("totalSmells", () => {
@@ -82,15 +131,16 @@ describe("totalSmells", () => {
       coveragePercent: null,
       crapScore: null,
       smells: emptyCounts(SMELL_DETECTORS),
+      findings: [],
       slopScore: 0,
     };
   }
 
   it("sums per-detector counts across methods", () => {
     const a = emptyCounts(SMELL_DETECTORS);
-    a.isGuards = 1;
+    a.guardLadders = 1;
     const b = emptyCounts(SMELL_DETECTORS);
-    b.isGuards = 2;
+    b.guardLadders = 2;
 
     // when
     const actual = totalSmells([
@@ -99,6 +149,6 @@ describe("totalSmells", () => {
     ]);
 
     // then
-    expect(actual.isGuards).toBe(3);
+    expect(actual.guardLadders).toBe(3);
   });
 });

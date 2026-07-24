@@ -5,6 +5,7 @@ import { type SmellDetector } from "../smell-detector.js";
 export const anyTypeSmell: SmellDetector = {
   key: "anyTypes",
   label: "any",
+  category: "escape-hatch",
   weight: 3,
   advice: "Replace any with unknown, a generic, or the real type.",
   matches(node) {

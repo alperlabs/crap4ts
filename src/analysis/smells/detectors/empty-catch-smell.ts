@@ -5,6 +5,7 @@ import { type SmellDetector } from "../smell-detector.js";
 export const emptyCatchSmell: SmellDetector = {
   key: "emptyCatches",
   label: "mute-catch",
+  category: "escape-hatch",
   weight: 3,
   advice: "Never swallow errors: handle, log, or rethrow.",
   matches(node) {

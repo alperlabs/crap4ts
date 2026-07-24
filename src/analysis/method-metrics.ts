@@ -1,4 +1,5 @@
 import type { SmellCounts } from "./smells/smell-counts.js";
+import type { SmellFinding } from "./smells/smell-finding.js";
 
 /** A single report row: method identity, complexity, coverage, CRAP, and slop. */
 export interface MethodMetrics {
@@ -10,6 +11,8 @@ export interface MethodMetrics {
   /** CRAP score, or null when coverage is unknown. */
   crapScore: number | null;
   smells: SmellCounts;
+  /** Located smell occurrences backing the counts. */
+  findings: readonly SmellFinding[];
   /** Weighted AI-slop aggregate for the method. */
   slopScore: number;
 }

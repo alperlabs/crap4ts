@@ -1,4 +1,4 @@
-import { existsSync, statSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { CliMode, type CliArguments } from "./cli-mode.js";
 import { parseCliArguments } from "./cli-arguments-parser.js";
@@ -6,6 +6,7 @@ import { USAGE } from "./usage.js";
 import { findSourceFilesUnderSrc, isAnalyzableSource } from "../discovery/source-file-finder.js";
 import { changedFilesUnderSrc } from "../discovery/changed-file-detector.js";
 import { groupByModuleRoot } from "../discovery/module-resolver.js";
+import { isDirectory } from "../discovery/file-system.js";
 import { CoverageRunner, COVERAGE_JSON_RELATIVE } from "../coverage/coverage-runner.js";
 import { ProcessCommandExecutor } from "../coverage/process-command-executor.js";
 import { analyze, maxCrap } from "../analysis/crap-analyzer.js";
@@ -55,7 +56,7 @@ export class CliApplication {
     try {
       return parseCliArguments(args);
     } catch (error) {
-      this.err((error as Error).message + "\n");
+      this.err(messageOf(error) + "\n");
       this.out(USAGE);
       return null;
     }
@@ -127,10 +128,7 @@ export function thresholdExceeded(max: number): boolean {
   return max > CRAP_THRESHOLD;
 }
 
-function isDirectory(candidate: string): boolean {
-  try {
-    return statSync(candidate).isDirectory();
-  } catch {
-    return false;
-  }
+/** Human-readable message for any thrown value. */
+export function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

@@ -59,7 +59,8 @@ machine-readable report format, or configurable thresholds through the CLI.
 ### 4.3 Invalid Usage
 
 The tool shall exit with usage error when argument parsing fails (for example,
-`--changed` combined with file arguments) and shall print usage text.
+`--changed` combined with file arguments, or any unrecognized `--flag`) and
+shall print usage text.
 
 ## 5. File Selection Rules
 
@@ -143,7 +144,7 @@ result is an integer `CC >= 1`.
 ## 9. AI-Slop Metrics
 
 For each declared method the tool shall count the smells defined in the README
-table (guards, `instanceof`, `typeof`, `any`, non-null assertions, `as` casts,
+table (guard ladders, `instanceof`, `typeof`, `any`, non-null assertions, `as` casts,
 optional chaining, nullish coalescing, try/catch, empty catch blocks,
 `console.*`, suppression comments, loose equality, `var` declarations) over the
 declaration node, without descending into nested declared methods. Each method's
@@ -152,13 +153,21 @@ not affect exit codes.
 
 The set of heuristics is a registry of independent detectors; an implementation
 may add or remove heuristics without changing the counting, scoring, or report
-machinery.
+machinery. Each detector belongs to one of two categories — escape hatches
+(strong signals that defeat the type system or error handling) and style
+heuristics (soft signals, suspicious only in aggregate) — and the report
+breakdown groups totals by category.
 
 ## 10. Coverage Attribution
 
 Coverage is attributed per method by taking the statements whose starting line
 falls within the method's line range and computing `covered / total * 100`. If
 no statements fall in range, coverage is `N/A` and CRAP is `N/A`.
+
+Known limitation: a method's line range includes any nested declared methods,
+so a parent method's coverage blends in its nested methods' statements even
+though those are reported as their own rows. Complexity and smells do exclude
+nested methods.
 
 ## 11. CRAP Formula
 
@@ -173,6 +182,11 @@ coverage percentage or `N/A`, CRAP score or `N/A`, and slop score. Sort by CRAP
 descending, with `N/A` CRAP rows after numeric rows. Follow the table with an
 AI-slop breakdown: per-category totals, the aggregate slop score, and the
 sloppiest methods.
+
+After the breakdown, when any smells were found, print a findings section
+listing each smell occurrence as `file:line`, the smell label, and the
+detector's one-line fix advice, sorted by file then line. Paths inside the
+working directory are printed relative to it.
 
 ## 13. Threshold
 

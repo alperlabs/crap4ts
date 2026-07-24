@@ -11,12 +11,12 @@ import type { MethodMetrics } from "./method-metrics.js";
 
 /**
  * Analyze a set of source files against a coverage report, producing one
- * MethodMetrics row per concrete method, sorted worst-CRAP first.
+ * MethodMetrics row per concrete method, in source order. Presentation order
+ * (worst-CRAP first) is the report formatter's job.
  */
 export function analyze(files: string[], coverageJsonPath: string | null): MethodMetrics[] {
   const coverage = parseCoverage(coverageJsonPath);
-  const metrics = files.flatMap((file) => analyzeFile(file, coverage));
-  return sortByCrapDescending(metrics);
+  return files.flatMap((file) => analyzeFile(file, coverage));
 }
 
 function analyzeFile(file: string, coverage: Map<string, FileCoverage>): MethodMetrics[] {
@@ -41,6 +41,7 @@ function toMetrics(
     coveragePercent,
     crapScore: calculateCrap(method.complexity, coveragePercent),
     smells: method.smells,
+    findings: method.findings,
     slopScore: slopScore(method.smells, SMELL_DETECTORS),
   };
 }

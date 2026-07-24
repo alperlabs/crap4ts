@@ -31,28 +31,48 @@ the selected files.
 
 Each method is also scanned for the following smells. They are counted per
 method and rolled up into a weighted **slop score** (weight in parentheses).
+Smells come in two categories, and the report groups them accordingly.
 
-| Smell        | What it counts                                                           | Weight |
-| ------------ | ------------------------------------------------------------------------ | ------ |
-| `guard`      | `is`/`has`/`can`/`should`-named guard calls and `x is T` type predicates | 2      |
-| `instof`     | `x instanceof Foo` expressions                                           | 1      |
-| `typeof`     | `typeof x` value-position checks                                         | 1      |
-| `any`        | `any` type annotations (`: any`, `as any`, `Array<any>`, ...)            | 3      |
-| `nonNull`    | non-null assertions (`x!`)                                               | 2      |
-| `as`         | type assertions (`x as T`, `<T>x`), excluding `as const`                 | 1      |
-| `?.`         | optional-chaining hops                                                   | 1      |
-| `??`         | nullish-coalescing operators                                             | 1      |
-| `try`        | try/catch statements                                                     | 1      |
-| `mute-catch` | empty `catch` blocks that swallow errors                                 | 3      |
-| `console`    | `console.*` calls                                                        | 2      |
-| `suppress`   | `@ts-ignore`/`@ts-expect-error`/`@ts-nocheck`/`eslint-disable` comments  | 4      |
-| `loose-eq`   | loose equality (`==`, `!=`), excluding the `x == null` idiom             | 2      |
-| `var`        | function-scoped `var` declarations                                       | 2      |
+**Escape hatches** — strong signals; they defeat the type system or error
+handling outright:
+
+| Smell        | What it counts                                                          | Weight |
+| ------------ | ----------------------------------------------------------------------- | ------ |
+| `suppress`   | `@ts-ignore`/`@ts-expect-error`/`@ts-nocheck`/`eslint-disable` comments | 4      |
+| `any`        | `any` type annotations (`: any`, `as any`, `Array<any>`, ...)           | 3      |
+| `mute-catch` | empty `catch` blocks that swallow errors                                | 3      |
+| `nonNull`    | non-null assertions (`x!`)                                              | 2      |
+| `loose-eq`   | loose equality (`==`, `!=`), excluding the `x == null` idiom            | 2      |
+| `var`        | function-scoped `var` declarations                                      | 2      |
+| `as`         | type assertions (`x as T`, `<T>x`), excluding `as const`                | 1      |
+
+**Style heuristics** — soft signals; each is idiomatic on its own and only
+suspicious in aggregate:
+
+| Smell     | What it counts                                                             | Weight |
+| --------- | -------------------------------------------------------------------------- | ------ |
+| `guard`   | consecutive `if (...) return/throw` guard clauses (ladders of N score N−1) | 2      |
+| `console` | `console.*` calls                                                          | 2      |
+| `instof`  | `x instanceof Foo` expressions                                             | 1      |
+| `typeof`  | `typeof x` value-position checks                                           | 1      |
+| `?.`      | optional-chaining hops                                                     | 1      |
+| `??`      | nullish-coalescing operators                                               | 1      |
+| `try`     | try/catch statements                                                       | 1      |
 
 None of these are bugs on their own; in aggregate they are a good smell for
 unreviewed, machine-generated code. The slop score does **not** affect the exit
 code — only the CRAP threshold does. Adding your own heuristic is a one-file
 change; see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+The report ends with a **findings section** locating every occurrence, so you
+can jump straight to the smell and fix it:
+
+```text
+Findings
+========
+src/user-service.ts:42    any         Replace any with unknown, a generic, or the real type.
+src/user-service.ts:57    mute-catch  Never swallow errors: handle, log, or rethrow.
+```
 
 ## Coverage Pipeline
 
@@ -154,12 +174,9 @@ declaration shape.
 
 ## Roadmap
 
-- **Per-finding output**: report each smell occurrence as `file:line` together
-  with the detector's one-line fix advice. The data layer already exists —
-  `findSmells` returns located findings, and every detector carries `advice` —
-  what remains is the report/CLI surface.
 - Configurable thresholds and weights.
 - Machine-readable (JSON) report output.
+- GitHub Actions annotations (`::error file=...,line=...`) from the findings.
 
 Have an idea for a new heuristic? Open a
 [smell proposal](.github/ISSUE_TEMPLATE/smell-proposal.md) — a detector is a

@@ -1,5 +1,7 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
+
+const IGNORED_DIRECTORIES: ReadonlySet<string> = new Set(["node_modules"]);
 
 /** True for `.ts`/`.tsx` files, excluding declaration files. */
 export function isAnalyzableSource(filePath: string): boolean {
@@ -18,23 +20,19 @@ export function findSourceFilesUnderSrc(root: string): string[] {
   if (!existsSync(src)) {
     return [];
   }
-  const files: string[] = [];
-  walk(src, files);
-  files.sort();
-  return files;
+  return collectFrom(src).sort();
 }
 
-function walk(dir: string, out: string[]): void {
-  for (const entry of readdirSync(dir)) {
-    const full = path.join(dir, entry);
-    const stats = statSync(full);
-    if (stats.isDirectory()) {
-      if (entry === "node_modules") {
-        continue;
-      }
-      walk(full, out);
-    } else if (isAnalyzableSource(full)) {
-      out.push(path.resolve(full));
+function collectFrom(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      return descendInto(entry.name, full);
     }
-  }
+    return isAnalyzableSource(full) ? [path.resolve(full)] : [];
+  });
+}
+
+function descendInto(name: string, full: string): string[] {
+  return IGNORED_DIRECTORIES.has(name) ? [] : collectFrom(full);
 }

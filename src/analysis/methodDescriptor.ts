@@ -1,4 +1,4 @@
-import type { SmellCounts } from "./aiSmells.js";
+import type { SmellCounts } from "./smells/smellCounts.js";
 
 /**
  * A concrete function/method extracted from a source file, with its location,

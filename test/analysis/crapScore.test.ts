@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calculateCrap } from "../src/analysis/crapScore.js";
+import { calculateCrap } from "../../src/analysis/crapScore.js";
 
 describe("calculateCrap", () => {
   it("returns complexity when fully covered", () => {

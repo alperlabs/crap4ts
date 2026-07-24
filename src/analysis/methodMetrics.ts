@@ -1,4 +1,4 @@
-import type { SmellCounts } from "./aiSmells.js";
+import type { SmellCounts } from "./smells/smellCounts.js";
 
 /** A single report row: method identity, complexity, coverage, CRAP, and slop. */
 export interface MethodMetrics {

@@ -149,6 +149,10 @@ declaration node, without descending into nested declared methods. Each method's
 weighted slop score is the sum of its counts times their weights. Slop scores do
 not affect exit codes.
 
+The set of heuristics is a registry of independent detectors; an implementation
+may add or remove heuristics without changing the counting, scoring, or report
+machinery.
+
 ## 10. Coverage Attribution
 
 Coverage is attributed per method by taking the statements whose starting line
@@ -158,7 +162,8 @@ no statements fall in range, coverage is `N/A` and CRAP is `N/A`.
 ## 11. CRAP Formula
 
 For methods with known coverage: `CRAP = CC^2 * (1 - coverage)^3 + CC`, where
-`coverage` is the fraction in `0.0..1.0`.
+`coverage` is the fraction in `0.0..1.0`. Because `CC >= 1`, the minimum possible
+CRAP score is `1.0` (complexity 1 at full coverage).
 
 ## 12. Report
 

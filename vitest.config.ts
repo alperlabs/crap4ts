@@ -9,7 +9,15 @@ export default defineConfig({
       reporter: ["text", "json"],
       reportsDirectory: "coverage",
       include: ["src/**/*.ts"],
-      exclude: ["src/main.ts"],
+      // Thin IO adapters and the entry point are integration-tested, not
+      // unit-covered; excluding them keeps the coverage signal about logic.
+      exclude: ["src/main.ts", "src/coverage/processCommandExecutor.ts"],
+      thresholds: {
+        statements: 100,
+        branches: 100,
+        functions: 100,
+        lines: 100,
+      },
     },
   },
 });

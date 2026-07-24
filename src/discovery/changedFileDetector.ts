@@ -2,37 +2,38 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { isAnalyzableSource } from "./sourceFileFinder.js";
 
-/** Runs a command and returns stdout; injectable for testing. */
+/** Runs `git status --porcelain` for a repo root and returns stdout. */
 export type GitRunner = (root: string) => string;
 
 const defaultGitRunner: GitRunner = (root) =>
-  execFileSync("git", ["-C", root, "status", "--porcelain"], { encoding: "utf8" });
+  execFileSync("git", ["-C", root, "status", "--porcelain", "--untracked-files=all"], {
+    encoding: "utf8",
+  });
 
 /**
  * Changed (modified, added, untracked, renamed) analyzable TypeScript files
- * under `<root>/src`, sorted in path order.
+ * under `<root>/src`, sorted in path order and de-duplicated.
  */
 export function changedFilesUnderSrc(root: string, git: GitRunner = defaultGitRunner): string[] {
   const srcPrefix = path.resolve(root, "src") + path.sep;
-  const output = git(root);
-  const files: string[] = [];
-  for (const line of output.split(/\r?\n/)) {
-    const file = parseStatusLine(root, line);
-    if (file !== null && (file + path.sep).startsWith(srcPrefix) && isAnalyzableSource(file)) {
-      files.push(file);
-    }
-  }
-  files.sort();
-  return [...new Set(files)];
+  const files = git(root)
+    .split(/\r?\n/)
+    .map((line) => parseStatusLine(root, line))
+    .filter((file): file is string => file !== null)
+    .filter((file) => isUnderSrc(file, srcPrefix) && isAnalyzableSource(file));
+  return [...new Set(files)].sort();
+}
+
+function isUnderSrc(file: string, srcPrefix: string): boolean {
+  return (file + path.sep).startsWith(srcPrefix);
 }
 
 export function parseStatusLine(root: string, line: string): string | null {
-  if (!line || line.trim().length === 0 || line.length < 4) {
+  if (line.trim().length < 1 || line.length < 4) {
     return null;
   }
-  const pathPart = line.slice(3).trim();
-  const finalPath = renameTarget(pathPart);
-  return path.resolve(root, unquote(finalPath));
+  const pathPart = renameTarget(line.slice(3).trim());
+  return path.resolve(root, unquote(pathPart));
 }
 
 export function renameTarget(pathPart: string): string {
@@ -41,8 +42,6 @@ export function renameTarget(pathPart: string): string {
 }
 
 function unquote(value: string): string {
-  if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
-    return value.slice(1, -1);
-  }
-  return value;
+  const quoted = value.length >= 2 && value.startsWith('"') && value.endsWith('"');
+  return quoted ? value.slice(1, -1) : value;
 }

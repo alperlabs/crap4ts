@@ -1,5 +1,7 @@
 # crap4ts
 
+[![CI](https://github.com/alperlabs/crap4ts/actions/workflows/ci.yml/badge.svg)](https://github.com/alperlabs/crap4ts/actions/workflows/ci.yml)
+
 `crap4ts` is a standalone CRAP metric tool for TypeScript projects, modeled
 after [`crap4java`](https://github.com/unclebob/crap4java).
 
@@ -22,27 +24,31 @@ the selected files.
   statements whose starting line falls inside the method), derived from an
   Istanbul `coverage-final.json`.
 
+> The lowest possible CRAP score is **1.0** — a method with complexity 1 at 100%
+> coverage scores `1² · 0³ + 1 = 1`. There is no such thing as CRAP 0.
+
 ## AI-slop metrics
 
 Each method is also scanned for the following smells. They are counted per
 method and rolled up into a weighted **slop score** (weight in parentheses).
 
-| Smell | What it counts | Weight |
-| --- | --- | --- |
-| `guard` | `is`/`has`/`can`/`should`-named guard calls and `x is T` type predicates | 2 |
-| `instof` | `x instanceof Foo` expressions | 1 |
-| `typeof` | `typeof x` value-position checks | 1 |
-| `any` | `any` type annotations (`: any`, `as any`, `Array<any>`, ...) | 3 |
-| `nonNull` | non-null assertions (`x!`) | 2 |
-| `as` | type assertions (`x as T`, `<T>x`), excluding `as const` | 1 |
-| `?.` | optional-chaining hops | 1 |
-| `??` | nullish-coalescing operators | 1 |
-| `try` | try/catch statements | 1 |
-| `console` | `console.*` calls | 2 |
+| Smell     | What it counts                                                           | Weight |
+| --------- | ------------------------------------------------------------------------ | ------ |
+| `guard`   | `is`/`has`/`can`/`should`-named guard calls and `x is T` type predicates | 2      |
+| `instof`  | `x instanceof Foo` expressions                                           | 1      |
+| `typeof`  | `typeof x` value-position checks                                         | 1      |
+| `any`     | `any` type annotations (`: any`, `as any`, `Array<any>`, ...)            | 3      |
+| `nonNull` | non-null assertions (`x!`)                                               | 2      |
+| `as`      | type assertions (`x as T`, `<T>x`), excluding `as const`                 | 1      |
+| `?.`      | optional-chaining hops                                                   | 1      |
+| `??`      | nullish-coalescing operators                                             | 1      |
+| `try`     | try/catch statements                                                     | 1      |
+| `console` | `console.*` calls                                                        | 2      |
 
 None of these are bugs on their own; in aggregate they are a good smell for
 unreviewed, machine-generated code. The slop score does **not** affect the exit
-code — only the CRAP threshold does.
+code — only the CRAP threshold does. Adding your own heuristic is a one-file
+change; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Coverage Pipeline
 
@@ -105,13 +111,42 @@ node dist/main.js packages/a packages/b
 - `1` invalid CLI usage
 - `2` CRAP threshold exceeded (`> 8.0`)
 
-## Test
+## Architecture
 
-```bash
-npm test
+```
+src/
+  analysis/
+    complexity/   decision-rule registry + cyclomatic complexity counter
+    smells/       smell-detector registry (one file per heuristic)
+    parsing/      TypeScript AST → declared methods (extractor registry)
+    crapScore.ts  the CRAP formula
+    crapAnalyzer.ts
+  coverage/       Istanbul coverage parsing + the coverage runner
+  discovery/      source-file finder, changed-file detector, module resolver
+  report/         text report + slop breakdown
+  cli/            argument parsing + the application orchestrator
 ```
 
-`crap4ts` is self-hosting: `node dist/main.js` analyzes its own `src/` tree.
+Smells, complexity decision points, and method extraction are each expressed as
+a **registry of small, single-purpose units** rather than a growing `switch`, so
+the code stays flat and extending it means adding a list entry. A single
+traversal contract (`parsing/methodTraversal.ts`) defines which nodes belong to
+a method, so the complexity and smell counters always agree.
+
+## Development
+
+```bash
+npm test          # vitest + 100% coverage gate
+npm run lint      # eslint (typescript-eslint)
+npm run format    # prettier --write
+npm run typecheck # tsc --noEmit
+npm run crap      # run crap4ts on itself (must exit 0)
+```
+
+`crap4ts` is self-hosting and holds itself to its own bar: 100% test coverage
+and a max self-CRAP well under the threshold, both enforced in CI. See
+[CONTRIBUTING.md](CONTRIBUTING.md) to add a smell detector, complexity rule, or
+declaration shape.
 
 ## Notes
 
@@ -121,3 +156,7 @@ npm test
 - Constructors, overload/`abstract`/`declare` signatures (no body), and
   anonymous inline callbacks are not reported as their own rows; a named arrow
   or function expression bound to a variable/property **is**.
+
+## License
+
+[MIT](LICENSE)

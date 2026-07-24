@@ -11,40 +11,46 @@ import path from "node:path";
  */
 export function moduleRootFor(projectRoot: string, file: string): string {
   const root = path.resolve(projectRoot);
-  const normalized = path.resolve(file);
-  let current = isDirectory(normalized) ? normalized : path.dirname(normalized);
-
-  while (current.startsWith(root)) {
-    if (existsSync(path.join(current, "package.json"))) {
-      return current;
-    }
-    const parent = path.dirname(current);
-    if (parent === current) {
-      break;
-    }
-    current = parent;
-  }
-  return root;
+  return walkUp(startDirectory(file), root) ?? root;
 }
 
-/**
- * Group files by their module root, preserving first-seen module order.
- */
-export function groupByModuleRoot(
-  projectRoot: string,
-  files: string[],
-): Map<string, string[]> {
+function walkUp(from: string, root: string): string | null {
+  let current = from;
+  while (current !== root) {
+    if (hasPackageJson(current)) {
+      return current;
+    }
+    current = path.dirname(current);
+  }
+  return hasPackageJson(root) ? root : null;
+}
+
+function hasPackageJson(dir: string): boolean {
+  return existsSync(path.join(dir, "package.json"));
+}
+
+function startDirectory(file: string): string {
+  const normalized = path.resolve(file);
+  return isDirectory(normalized) ? normalized : path.dirname(normalized);
+}
+
+/** Group files by their module root, preserving first-seen module order. */
+export function groupByModuleRoot(projectRoot: string, files: string[]): Map<string, string[]> {
   const grouped = new Map<string, string[]>();
   for (const file of files) {
     const moduleRoot = moduleRootFor(projectRoot, file);
-    const bucket = grouped.get(moduleRoot);
-    if (bucket) {
-      bucket.push(file);
-    } else {
-      grouped.set(moduleRoot, [file]);
-    }
+    appendTo(grouped, moduleRoot, file);
   }
   return grouped;
+}
+
+function appendTo(grouped: Map<string, string[]>, key: string, value: string): void {
+  const bucket = grouped.get(key);
+  if (bucket) {
+    bucket.push(value);
+  } else {
+    grouped.set(key, [value]);
+  }
 }
 
 function isDirectory(candidate: string): boolean {

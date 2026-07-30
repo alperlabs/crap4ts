@@ -1,17 +1,23 @@
 name: Release
 
+# Publishing is driven by merges to main: when the version in package.json
+# differs from the version on npm, the full gate runs, the package publishes
+# with provenance, and the matching v<version> tag is pushed automatically.
+# Bump the version in your PR to cut a release; merges without a bump no-op.
 on:
   push:
-    tags:
-      - "v*"
-  # Manual fallback: publish the current default branch from the Actions tab.
+    branches: [main]
+  # Manual fallback: re-run the same detection/publish from the Actions tab.
   workflow_dispatch:
+
+concurrency: release
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # Push the release tag back to the repository.
+      contents: write
       # Required for npm provenance attestation.
       id-token: write
     steps:
@@ -22,12 +28,40 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build
+      - name: Detect version change
+        id: version
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          LOCAL=$(node -p "require('./package.json').version")
+          PUBLISHED=$(npm view "$NAME" version 2>/dev/null || echo "unpublished")
+          echo "local=$LOCAL" >> "$GITHUB_OUTPUT"
+          if [ "$LOCAL" = "$PUBLISHED" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Version $LOCAL already on npm; nothing to release."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Releasing $NAME@$LOCAL (npm has: $PUBLISHED)."
+          fi
+      - if: steps.version.outputs.changed == 'true'
+        run: npm run typecheck
+      - if: steps.version.outputs.changed == 'true'
+        run: npm run lint
+      - if: steps.version.outputs.changed == 'true'
+        run: npm test
+      - if: steps.version.outputs.changed == 'true'
+        run: npm run build
       - name: Self CRAP gate
+        if: steps.version.outputs.changed == 'true'
         run: node dist/main.js
-      - run: npm publish
+      - name: Publish to npm
+        if: steps.version.outputs.changed == 'true'
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Push release tag
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.version.outputs.local }}"
+          git push origin "v${{ steps.version.outputs.local }}"

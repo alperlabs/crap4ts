@@ -3,12 +3,10 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { findSourceFiles, isAnalyzableSource } from "../../src/discovery/source-file-finder.js";
 import {
-  findSourceFilesUnderSrc,
-  isAnalyzableSource,
-} from "../../src/discovery/source-file-finder.js";
-import {
-  changedFilesUnderSrc,
+  changedFiles,
+  changedFilesSince,
   parseStatusLine,
   renameTarget,
 } from "../../src/discovery/changed-file-detector.js";
@@ -45,7 +43,7 @@ describe("filesystem and git discovery", () => {
     writeFileSync(path.join(dir, "src", "node_modules", "dep.ts"), "");
 
     // when
-    const actual = findSourceFilesUnderSrc(dir).map((f) => path.relative(dir, f));
+    const actual = findSourceFiles(dir, ["src"]).map((f) => path.relative(dir, f));
 
     // then
     expect(actual).toEqual([
@@ -57,7 +55,7 @@ describe("filesystem and git discovery", () => {
 
   it("returns empty when there is no src directory", () => {
     // when
-    const actual = findSourceFilesUnderSrc(dir);
+    const actual = findSourceFiles(dir, ["src"]);
 
     // then
     expect(actual).toEqual([]);
@@ -75,7 +73,7 @@ describe("filesystem and git discovery", () => {
     ].join("\n");
 
     // when
-    const actual = changedFilesUnderSrc(dir, () => output).map((f) => path.relative(dir, f));
+    const actual = changedFiles(dir, ["src"], () => output).map((f) => path.relative(dir, f));
 
     // then
     expect(actual).toEqual([
@@ -91,10 +89,45 @@ describe("filesystem and git discovery", () => {
     writeFileSync(path.join(dir, "src", "fresh.ts"), "export const x = 1;\n");
 
     // when
-    const actual = changedFilesUnderSrc(dir).map((f) => path.relative(dir, f));
+    const actual = changedFiles(dir, ["src"]).map((f) => path.relative(dir, f));
 
     // then
     expect(actual).toContain(path.join("src", "fresh.ts"));
+  });
+
+  it("unions committed and uncommitted changes for --changed-since (injected git)", () => {
+    const git = (_root: string, args: string[]): string => {
+      if (args[0] === "diff") {
+        expect(args).toEqual(["diff", "--name-only", "origin/main...HEAD"]);
+        return ["src/committed.ts", "docs/skip.md", ""].join("\n");
+      }
+      return [" M src/dirty.ts", ""].join("\n");
+    };
+
+    // when
+    const actual = changedFilesSince(dir, "origin/main", ["src"], git).map((f) =>
+      path.relative(dir, f),
+    );
+
+    // then
+    expect(actual).toEqual([path.join("src", "committed.ts"), path.join("src", "dirty.ts")]);
+  });
+
+  it("reads --changed-since from a real git repository (default runner)", () => {
+    execFileSync("git", ["init", "-q"], { cwd: dir });
+    execFileSync("git", ["-C", dir, "config", "user.email", "t@t"], { cwd: dir });
+    execFileSync("git", ["-C", dir, "config", "user.name", "t"], { cwd: dir });
+    mkdirSync(path.join(dir, "src"), { recursive: true });
+    writeFileSync(path.join(dir, "src", "a.ts"), "export const a = 1;\n");
+    execFileSync("git", ["-C", dir, "add", "."], { cwd: dir });
+    execFileSync("git", ["-C", dir, "commit", "-qm", "init"], { cwd: dir });
+    writeFileSync(path.join(dir, "src", "b.ts"), "export const b = 2;\n");
+
+    // when
+    const actual = changedFilesSince(dir, "HEAD", ["src"]).map((f) => path.relative(dir, f));
+
+    // then
+    expect(actual).toEqual([path.join("src", "b.ts")]);
   });
 
   it("parses and de-quotes status lines, ignoring blanks", () => {

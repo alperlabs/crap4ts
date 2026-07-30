@@ -1,7 +1,12 @@
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 
-const IGNORED_DIRECTORIES: ReadonlySet<string> = new Set(["node_modules"]);
+const IGNORED_DIRECTORIES: ReadonlySet<string> = new Set([
+  "node_modules",
+  ".git",
+  "coverage",
+  "dist",
+]);
 
 /** True for `.ts`/`.tsx` files, excluding declaration files. */
 export function isAnalyzableSource(filePath: string): boolean {
@@ -12,15 +17,16 @@ export function isAnalyzableSource(filePath: string): boolean {
 }
 
 /**
- * All analyzable TypeScript files under `<root>/src`, sorted in path order.
- * Returns an empty list when no `src` directory exists.
+ * All analyzable TypeScript files under the given source roots of `root`,
+ * de-duplicated and sorted in path order. Missing roots contribute nothing.
  */
-export function findSourceFilesUnderSrc(root: string): string[] {
-  const src = path.join(root, "src");
-  if (!existsSync(src)) {
-    return [];
-  }
-  return collectFrom(src).sort();
+export function findSourceFiles(root: string, sourceRoots: readonly string[]): string[] {
+  const files = sourceRoots.flatMap((sourceRoot) => filesUnder(path.join(root, sourceRoot)));
+  return [...new Set(files)].sort();
+}
+
+function filesUnder(directory: string): string[] {
+  return existsSync(directory) ? collectFrom(directory) : [];
 }
 
 function collectFrom(dir: string): string[] {

@@ -2,30 +2,58 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { isAnalyzableSource } from "./source-file-finder.js";
 
-/** Runs `git status --porcelain` for a repo root and returns stdout. */
-export type GitRunner = (root: string) => string;
+/** Runs a git subcommand for a repo root and returns stdout. */
+export type GitRunner = (root: string, args: string[]) => string;
 
-const defaultGitRunner: GitRunner = (root) =>
-  execFileSync("git", ["-C", root, "status", "--porcelain", "--untracked-files=all"], {
-    encoding: "utf8",
-  });
+const defaultGitRunner: GitRunner = (root, args) =>
+  execFileSync("git", ["-C", root, ...args], { encoding: "utf8" });
 
 /**
  * Changed (modified, added, untracked, renamed) analyzable TypeScript files
- * under `<root>/src`, sorted in path order and de-duplicated.
+ * under the source roots, sorted in path order and de-duplicated.
  */
-export function changedFilesUnderSrc(root: string, git: GitRunner = defaultGitRunner): string[] {
-  const srcPrefix = path.resolve(root, "src") + path.sep;
-  const files = git(root)
-    .split(/\r?\n/)
-    .map((line) => parseStatusLine(root, line))
-    .filter((file): file is string => file !== null)
-    .filter((file) => isUnderSrc(file, srcPrefix) && isAnalyzableSource(file));
-  return [...new Set(files)].sort();
+export function changedFiles(
+  root: string,
+  sourceRoots: readonly string[],
+  git: GitRunner = defaultGitRunner,
+): string[] {
+  return selectAnalyzable(root, sourceRoots, statusFiles(root, git));
 }
 
-function isUnderSrc(file: string, srcPrefix: string): boolean {
-  return (file + path.sep).startsWith(srcPrefix);
+/**
+ * Analyzable TypeScript files changed since the merge-base with `ref` —
+ * committed changes (`git diff ref...HEAD`) plus uncommitted ones — under the
+ * source roots, sorted and de-duplicated. This is the PR-shaped selection:
+ * `--changed-since origin/main` analyzes exactly what a review would.
+ */
+export function changedFilesSince(
+  root: string,
+  ref: string,
+  sourceRoots: readonly string[],
+  git: GitRunner = defaultGitRunner,
+): string[] {
+  const committed = git(root, ["diff", "--name-only", `${ref}...HEAD`])
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0)
+    .map((line) => path.resolve(root, line));
+  return selectAnalyzable(root, sourceRoots, [...committed, ...statusFiles(root, git)]);
+}
+
+function statusFiles(root: string, git: GitRunner): string[] {
+  return git(root, ["status", "--porcelain", "--untracked-files=all"])
+    .split(/\r?\n/)
+    .map((line) => parseStatusLine(root, line))
+    .filter((file): file is string => file !== null);
+}
+
+function selectAnalyzable(root: string, sourceRoots: readonly string[], files: string[]): string[] {
+  const prefixes = sourceRoots.map((sourceRoot) => path.resolve(root, sourceRoot) + path.sep);
+  const selected = files.filter((file) => isUnderAny(file, prefixes) && isAnalyzableSource(file));
+  return [...new Set(selected)].sort();
+}
+
+function isUnderAny(file: string, prefixes: readonly string[]): boolean {
+  return prefixes.some((prefix) => (file + path.sep).startsWith(prefix));
 }
 
 export function parseStatusLine(root: string, line: string): string | null {

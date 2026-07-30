@@ -92,7 +92,7 @@ describe("CliApplication", () => {
 
     // then
     expect(actual).toBe(1);
-    expect(err).toContain("--changed cannot be combined");
+    expect(err).toContain("mutually exclusive");
     expect(out).toContain("Usage:");
   });
 
@@ -133,7 +133,7 @@ describe("CliApplication", () => {
 
     // then
     expect(actual).toBe(0);
-    expect(err).toContain("coverage report not found");
+    expect(err).toContain("no coverage report found");
     expect(out).toContain("N/A");
   });
 

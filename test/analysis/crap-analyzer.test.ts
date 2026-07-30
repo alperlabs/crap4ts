@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { analyze, sortByCrapDescending, maxCrap } from "../../src/analysis/crap-analyzer.js";
+import { parseCoverage } from "../../src/coverage/coverage-parser.js";
 import type { MethodMetrics } from "../../src/analysis/method-metrics.js";
 
 function metric(crapScore: number | null, methodName = "m"): MethodMetrics {
@@ -100,7 +101,7 @@ describe("analyze", () => {
     );
 
     // when
-    const [actual] = analyze([filePath], json);
+    const [actual] = analyze([filePath], parseCoverage(json));
 
     // then
     expect(actual).toMatchObject({ methodName: "branch", complexity: 2 });

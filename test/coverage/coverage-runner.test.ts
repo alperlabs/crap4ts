@@ -28,7 +28,7 @@ describe("CoverageRunner", () => {
     };
 
     // when
-    await new CoverageRunner(executor, ["echo", "hi"]).generateCoverage(dir);
+    await new CoverageRunner(executor).generateCoverage(dir, ["echo", "hi"]);
 
     // then
     expect(existsSync(path.join(dir, "coverage"))).toBe(false);

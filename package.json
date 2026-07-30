@@ -1,20 +1,33 @@
 {
-  "name": "crap4ts",
-  "version": "0.1.0",
+  "name": "@alperlabs/crap4ts",
+  "version": "0.2.0",
   "description": "A CRAP metric analyzer for TypeScript projects, with extra AI-slop heuristics. Modeled after crap4java.",
   "type": "module",
   "bin": {
     "crap4ts": "dist/main.js"
   },
-  "main": "dist/main.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "engines": {
     "node": ">=18"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run typecheck && npm run lint && npm test && npm run build",
     "start": "node dist/main.js",
     "crap": "tsx src/main.ts",
     "test": "vitest run --coverage",

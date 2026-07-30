@@ -35,10 +35,13 @@ src/
     parsing/      TypeScript AST → declared methods (extractor registry)
     crap-score.ts  the CRAP formula
     crap-analyzer.ts
-  coverage/       Istanbul coverage parsing + the coverage runner
+  coverage/       coverage runner + pluggable report readers (readers/)
   discovery/      source-file finder, changed-file detector, module resolver
-  report/         text report + slop breakdown
+  report/         report renderers: text, json, github (registry.ts)
+  baseline/       ratchet-mode baseline build/read/compare
+  config/         defaults, config-file loading, CLI/file/default merging
   cli/            argument parsing + the application orchestrator
+  index.ts        the public library API
 ```
 
 Two ideas keep complexity low and extension easy:
@@ -105,6 +108,39 @@ That's the only wiring. Counting, scoring, the report breakdown, and the
 Add a case to `test/analysis/smells.test.ts` with a matching and a
 non-matching example, and update the README smell table. Run `npm test` — the
 100% coverage gate will tell you if any branch of your detector is untested.
+
+## Adding a coverage report format
+
+Coverage reading is an interface. Implement a `CoverageReader` in
+`src/coverage/readers/<name>-reader.ts`:
+
+```ts
+import type { CoverageReader } from "../coverage-reader.js";
+
+export const myFormatReader: CoverageReader = {
+  format: "my-format", // name accepted by --coverage-format
+  defaultReportPaths: ["coverage/my-report.xyz"], // probed after the coverage command runs
+  canRead: (reportPath) => reportPath.endsWith(".xyz"),
+  read: (reportPath) => new Map(), // absolute source path -> FileCoverage
+};
+```
+
+Register it in `src/coverage/readers/registry.ts` and add a test under
+`test/coverage/`. Library consumers can instead pass extra readers via
+`CliApplicationOptions.coverageReaders` — no fork needed.
+
+## Adding a report format
+
+Implement a `ReportRenderer` in `src/report/<name>-formatter.ts`, add it to
+`src/report/registry.ts`, and add the name to `ReportFormatName` in
+`src/config/crap-config.ts`. The compiler will point out the remaining wiring.
+
+## Adding a config setting or CLI flag
+
+Config keys are a registry too: add a `ConfigField` entry in
+`src/config/config-file.ts`, a field on `CrapConfig`, and (if flag-worthy) a
+`CliOption` entry in `src/cli/cli-arguments-parser.ts` plus a line in
+`src/cli/usage.ts`.
 
 ## Adding a complexity decision point
 

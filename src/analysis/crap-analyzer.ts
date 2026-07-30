@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { parseCoverage, normalizePath } from "../coverage/coverage-parser.js";
+import { normalizePath } from "../coverage/coverage-parser.js";
 import { FileCoverage } from "../coverage/coverage-data.js";
 import { calculateCrap } from "./crap-score.js";
 import { parseMethods } from "./parsing/typescript-method-parser.js";
@@ -11,17 +11,23 @@ import type { MethodDescriptor } from "./method-descriptor.js";
 import type { MethodMetrics } from "./method-metrics.js";
 
 /**
- * Analyze a set of source files against a coverage report, producing one
+ * Analyze a set of source files against per-file coverage data, producing one
  * MethodMetrics row per concrete method, in source order. Presentation order
  * (worst-CRAP first) is the report formatter's job.
+ *
+ * Coverage is a map from absolute, normalized source path to statement
+ * coverage, as produced by a {@link CoverageReader}; pass null when coverage
+ * is unknown and every method reports coverage (and CRAP) as N/A.
  */
-export function analyze(files: string[], coverageJsonPath: string | null): MethodMetrics[] {
-  const coverage = parseCoverage(coverageJsonPath);
-  const metrics = files.flatMap((file) => analyzeFile(file, coverage));
+export function analyze(
+  files: string[],
+  coverage: ReadonlyMap<string, FileCoverage> | null,
+): MethodMetrics[] {
+  const metrics = files.flatMap((file) => analyzeFile(file, coverage ?? new Map()));
   return annotateDuplicateTypeGuards(metrics);
 }
 
-function analyzeFile(file: string, coverage: Map<string, FileCoverage>): MethodMetrics[] {
+function analyzeFile(file: string, coverage: ReadonlyMap<string, FileCoverage>): MethodMetrics[] {
   const absolute = path.resolve(file);
   if (!existsSync(absolute)) {
     return [];

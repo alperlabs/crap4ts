@@ -10,38 +10,51 @@ import {
 import type { SmellFinding } from "../analysis/smells/smell-finding.js";
 import type { SmellCategory } from "../analysis/smells/smell-detector.js";
 import type { MethodMetrics } from "../analysis/method-metrics.js";
+import { summarize, type ReportSummary } from "./summary.js";
+import { DEFAULT_CONFIG } from "../config/crap-config.js";
+import type { ReportContext, ReportRenderer } from "./report-context.js";
 
 const WORST_OFFENDER_LIMIT = 5;
 
+/** The default human-readable report. */
+export const textRenderer: ReportRenderer = {
+  name: "text",
+  render: (metrics, context) => formatReport(metrics, context),
+};
+
 /** Render the full CRAP + AI-slop report as text. */
-export function formatReport(metrics: MethodMetrics[]): string {
+export function formatReport(
+  metrics: MethodMetrics[],
+  context: ReportContext = { projectRoot: process.cwd(), threshold: DEFAULT_CONFIG.threshold },
+): string {
   const sorted = sortByCrapDescending(metrics);
-  return crapTable(sorted) + "\n" + slopBreakdown(sorted) + findingsSection(sorted);
+  return crapTable(sorted) + "\n" + slopBreakdown(sorted) + findingsSection(sorted, context);
 }
 
 /**
  * Every smell occurrence as `file:line  label  advice`, sorted by file then
  * line. Empty when the code is clean.
  */
-function findingsSection(metrics: MethodMetrics[]): string {
+function findingsSection(metrics: MethodMetrics[], context: ReportContext): string {
   const findings = metrics.flatMap((entry) => entry.findings).sort(byFileAndLine);
   if (findings.length === 0) {
     return "";
   }
   const lines = ["", "Findings", "========"];
   for (const finding of findings) {
-    lines.push(findingLine(finding));
+    lines.push(findingLine(finding, context));
   }
   return lines.join("\n") + "\n";
 }
 
-function findingLine(finding: SmellFinding): string {
-  const location = `${relativePath(finding.file)}:${finding.line}`;
+function findingLine(finding: SmellFinding, context: ReportContext): string {
+  const location = `${relativePath(finding.file, context.projectRoot)}:${finding.line}`;
   return `${location.padEnd(40)}  ${finding.detector.label.padEnd(10)}  ${finding.detector.advice}`;
 }
 
-function relativePath(file: string): string {
-  const relative = path.relative(process.cwd(), file);
+/** Project-root-relative path, or the absolute path for outside files. */
+export function relativePath(file: string, projectRoot: string): string {
+  const relative = path.relative(projectRoot, file);
   return relative.startsWith("..") ? file : relative;
 }
 
@@ -80,8 +93,26 @@ function slopBreakdown(sorted: MethodMetrics[]): string {
     lines.push(heading, ...categoryLines(category, totals));
   }
   lines.push("-".repeat(16));
-  lines.push(`Total slop score: ${totalSlop(sorted)} across ${sorted.length} method(s)`);
+  lines.push(...densityLines(summarize(sorted)));
   return lines.concat(worstOffenderLines(sorted)).join("\n") + "\n";
+}
+
+/**
+ * Per-method densities. The category split is the useful signal: escape
+ * hatches and style residue separate codebases that a single total cannot.
+ */
+function densityLines(summary: ReportSummary): string[] {
+  return [
+    `Total slop score: ${summary.totalSlop} across ${summary.methodCount} method(s)` +
+      ` (${density(summary.slopPerMethod)}/method)`,
+    `  Escape hatches: ${summary.escapeHatchSlop} (${density(summary.escapeHatchPerMethod)}/method)`,
+    `  Style residue:  ${summary.styleSlop} (${density(summary.stylePerMethod)}/method)`,
+    `Mean complexity:  ${density(summary.meanComplexity)}`,
+  ];
+}
+
+function density(value: number): string {
+  return value.toFixed(2);
 }
 
 function categoryLines(category: SmellCategory, totals: SmellCounts): string[] {
@@ -114,10 +145,6 @@ export function totalSmells(metrics: MethodMetrics[]): SmellCounts {
   return metrics.reduce((acc, entry) => addCounts(acc, entry.smells), emptyCounts(SMELL_DETECTORS));
 }
 
-function totalSlop(metrics: MethodMetrics[]): number {
-  return metrics.reduce((sum, entry) => sum + entry.slopScore, 0);
-}
-
 const HEADER = row("Method", "Class", "CC", "Cov%", "CRAP", "Slop");
 
 function row(
@@ -142,6 +169,7 @@ function formatCoverage(coverage: number | null): string {
   return coverage === null ? "N/A" : `${coverage.toFixed(1)}%`;
 }
 
-function formatCrap(score: number | null): string {
+/** CRAP score for display: one decimal, or N/A when unknown. */
+export function formatCrap(score: number | null): string {
   return score === null ? "N/A" : score.toFixed(1);
 }

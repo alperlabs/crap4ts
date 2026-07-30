@@ -25,4 +25,4 @@ jobs:
       - run: npm test
       - run: npm run build
       - name: Self CRAP gate
-        run: node dist/main.js
+        run: node dist/main.js --format github

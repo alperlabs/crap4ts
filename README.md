@@ -69,7 +69,8 @@ async execute(command: AdminUpdateOrganizationCommand): Promise<Organization> {
 | **CRAP** | **20** | `4² · (1 − 0)³ + 4 = 20`                         |
 
 At **100%** coverage the same method would score **CRAP 4.0** — well under the
-default gate of 8. The fix is a focused unit test for `execute`, not a rewrite.
+default gate of 8 (tune it with `--threshold`). The fix is a focused unit test
+for `execute`, not a rewrite.
 
 ### Example: dense domain update, CRAP 90
 
@@ -182,61 +183,157 @@ src/user-service.ts:57    mute-catch  Never swallow errors: handle, log, or reth
 For each module (directory owning a `package.json`), the tool:
 
 1. Deletes the stale `coverage/` directory.
-2. Runs the coverage command (default `npm test`).
-3. Reads `coverage/coverage-final.json` (Istanbul JSON format).
+2. Runs the coverage command (default `npm test`, configurable via
+   `--coverage-command`).
+3. Reads the coverage report through a **coverage reader** — Istanbul
+   `coverage-final.json` and LCOV `lcov.info` ship built in, probed in that
+   order. `--coverage-format` forces one explicitly.
 4. Analyzes the selected TypeScript files in that module.
 
-Your project's coverage command must emit an Istanbul `coverage-final.json`, for
-example:
+Example coverage commands:
 
 - **Vitest**: `vitest run --coverage` with `coverage.provider = "istanbul"` and
-  the `json` reporter.
-- **Jest**: `jest --coverage --coverageReporters=json`.
+  the `json` reporter (or the lcov reporter with any provider).
+- **Jest**: `jest --coverage --coverageReporters=json` (or `lcov`).
+- **c8 / node:test**: `c8 --reporter=lcov node --test`.
 
-## Install / Build
+Already ran coverage in an earlier CI step? Skip the re-run with
+`--coverage-file coverage/coverage-final.json`. Analyzing a repo you can't
+run (or don't want to)? `--no-coverage` scores smells and complexity only,
+with coverage and CRAP reported as N/A.
+
+Coverage reading is an interface (`CoverageReader`): implementing one file
+adds a format, and library consumers can pass their own readers without
+forking. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Install
 
 ```bash
-npm install
-npm run build
+# in a project
+npm install --save-dev @alperlabs/crap4ts
+
+# or run without installing
+npx @alperlabs/crap4ts
 ```
 
-## Run
-
-From the root of the project you want to analyze:
-
-```bash
-# via the built CLI
-node dist/main.js
-
-# or without building
-npx tsx src/main.ts
-```
+Both put a `crap4ts` binary on your path. From a checkout: `npm install &&
+npm run build`, then `node dist/main.js`.
 
 ## CLI
 
 ```text
---help                Print usage to stdout
-(no args)             Analyze all .ts/.tsx files under src/
---changed             Analyze changed .ts/.tsx files under src/ (git status)
-<file ...>            Analyze only these files
-<directory ...>       Analyze all .ts/.tsx files under each directory's src/ subtree
+Usage: crap4ts [selection] [options]
+
+Selection (mutually exclusive):
+  (no args)                    Analyze all TypeScript files under the source roots
+  --changed                    Analyze files with uncommitted changes (git status)
+  --changed-since <ref>        Analyze files changed since merge-base with <ref>
+                               (committed and uncommitted), e.g. origin/main
+  <path...>                    Analyze these files; directory arguments are
+                               searched under their own source roots
+
+Options:
+  --threshold <score>          Maximum allowed CRAP score (default: 8.0)
+  --format <name>              Report format: text, json, or github (default: text)
+  --no-coverage                Skip coverage; coverage and CRAP report as N/A
+  --coverage-file <path>       Read an existing coverage report instead of
+                               running the coverage command
+  --coverage-command <command> Command that generates coverage (default: npm test)
+  --coverage-format <name>     Coverage report format: istanbul or lcov
+                               (default: detect from the report file name)
+  --source-root <dir>          Source directory to search; repeatable
+                               (default: src)
+  --baseline <path>            Fail only on methods that are new or worse than
+                               this baseline file
+  --write-baseline             Write the baseline file from this run and exit 0
+  --config <path>              Config file (default: crap4ts.config.json, then
+                               the "crap4ts" key in package.json)
+  --version                    Print the crap4ts version
+  --help                       Print this help message
 ```
 
 Examples:
 
 ```bash
-node dist/main.js --help
-node dist/main.js
-node dist/main.js --changed
-node dist/main.js src/foo/Sample.ts
-node dist/main.js packages/a packages/b
+crap4ts                                   # gate the whole project
+crap4ts --changed-since origin/main       # PR-scoped: only what the diff touched
+crap4ts --format json > crap.json         # machine-readable report
+crap4ts --coverage-file coverage/lcov.info --threshold 10
+crap4ts src/foo/Sample.ts packages/a packages/b
 ```
+
+## Configuration
+
+Every flag has a config-file equivalent. Settings load from
+`crap4ts.config.json` at the project root (or a `crap4ts` key in
+`package.json`); CLI flags win over the file, the file wins over defaults:
+
+```json
+{
+  "threshold": 10,
+  "format": "text",
+  "coverageCommand": "npx vitest run --coverage",
+  "sourceRoots": ["src", "lib"],
+  "baseline": "crap4ts-baseline.json"
+}
+```
+
+Other keys: `coverage` (`"run"` | `"file"` | `"off"`), `coverageFile`,
+`coverageFormat`. Unknown keys and wrong types are errors, not silent
+fallbacks.
+
+## CI
+
+`--format github` prefixes the report with GitHub Actions annotations —
+`::error` per method over the threshold, `::warning` per smell finding — so
+results land inline on the pull request diff:
+
+```yaml
+- run: npx @alperlabs/crap4ts --coverage-file coverage/coverage-final.json --format github
+```
+
+## Baseline (ratchet) mode
+
+Real codebases rarely pass a CRAP gate on day one. Record today's scores,
+then fail only what is **new or worse**:
+
+```bash
+crap4ts --write-baseline               # writes crap4ts-baseline.json
+crap4ts --baseline crap4ts-baseline.json   # passes; existing debt is accepted
+```
+
+Commit the baseline. Methods over the threshold that are already recorded
+pass until they get worse; new offenders and regressions fail. Re-run
+`--write-baseline` after paying debt down so the ratchet only tightens.
+
+## Library use
+
+The npm package exposes everything the CLI does:
+
+```ts
+import {
+  analyze,
+  istanbulJsonReader,
+  rendererNamed,
+  buildBaseline,
+  type CoverageReader,
+} from "@alperlabs/crap4ts";
+
+const coverage = istanbulJsonReader.read("coverage/coverage-final.json");
+const metrics = analyze(["src/service.ts"], coverage);
+console.log(rendererNamed("json").render(metrics, { projectRoot: process.cwd(), threshold: 8 }));
+```
+
+Custom coverage formats implement the `CoverageReader` interface and can be
+passed to `new CliApplication({ coverageReaders: [...] })` alongside the
+built-ins.
 
 ## Exit codes
 
-- `0` success, threshold respected (also: empty selection, `--help`)
-- `1` invalid CLI usage
-- `2` CRAP threshold exceeded (`> 8.0`)
+- `0` success, gate respected (also: empty selection, `--help`, `--version`,
+  `--write-baseline`)
+- `1` invalid CLI usage, broken config, or missing baseline
+- `2` CRAP gate failed (over the threshold, or worse than the baseline)
 
 ## Architecture
 
@@ -248,10 +345,13 @@ src/
     parsing/      TypeScript AST → declared methods (extractor registry)
     crap-score.ts  the CRAP formula
     crap-analyzer.ts
-  coverage/       Istanbul coverage parsing + the coverage runner
+  coverage/       coverage runner + pluggable report readers (istanbul, lcov)
   discovery/      source-file finder, changed-file detector, module resolver
-  report/         text report + slop breakdown
+  report/         report renderers: text, json, github
+  baseline/       ratchet-mode baseline build/read/compare
+  config/         defaults, config file, CLI/file/default merging
   cli/            argument parsing + the application orchestrator
+  index.ts        the public library API
 ```
 
 Smells, complexity decision points, and method extraction are each expressed as
@@ -277,9 +377,9 @@ declaration shape.
 
 ## Roadmap
 
-- Configurable thresholds and weights.
-- Machine-readable (JSON) report output.
-- GitHub Actions annotations (`::error file=...,line=...`) from the findings.
+- Configurable smell weights.
+- SARIF output for GitHub code scanning.
+- A published reference corpus for density comparisons.
 
 Have an idea for a new heuristic? Open a
 [smell proposal](.github/ISSUE_TEMPLATE/smell-proposal.md) — a detector is a
@@ -287,7 +387,8 @@ one-file contribution.
 
 ## Notes
 
-- If the coverage JSON is missing, coverage is reported as `N/A` (and CRAP `N/A`).
+- If no coverage report is found (or `--no-coverage` is set), coverage is
+  reported as `N/A` (and CRAP `N/A`); the run still succeeds.
 - The report is sorted by CRAP descending, with `N/A` rows at the bottom.
 - `.d.ts` declaration files are ignored.
 - Constructors, overload/`abstract`/`declare` signatures (no body), and

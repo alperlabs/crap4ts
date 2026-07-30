@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { FileCoverage, type StatementCoverage } from "./coverage-data.js";
+import { isRecord } from "../shared/records.js";
 
 /**
  * Parse an Istanbul `coverage-final.json` file into per-file statement
@@ -65,9 +66,6 @@ function recordAt(entry: Record<string, unknown>, key: string): Record<string, u
   return isRecord(value) ? value : {};
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
 
 export function normalizePath(filePath: string): string {
   return path.resolve(filePath);

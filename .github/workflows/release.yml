@@ -94,7 +94,9 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: npm ci
       - name: Sync package.json to the released version
-        run: npm version --no-git-tag-version "${TAG#v}"
+        # --allow-same-version: on the seeded first release the tag matches the
+        # version already in package.json, and npm treats that as an error.
+        run: npm version --no-git-tag-version --allow-same-version "${TAG#v}"
         env:
           TAG: ${{ needs.version.outputs.version }}
       - run: npm run typecheck

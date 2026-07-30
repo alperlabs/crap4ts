@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*"
+  # Manual fallback: publish the current default branch from the Actions tab.
+  workflow_dispatch:
 
 jobs:
   publish:
